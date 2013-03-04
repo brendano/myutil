@@ -8,11 +8,11 @@ public class MCMC {
 
 	/**
 	    Slice sampling (Neal 2003; MacKay 2003, sec. 29.7)
-	
+
 	    logdist: log-density function of target distribution
 	    initial: initial state  (D-dim vector)
 	    widths: step sizes for expanding the slice (D-dim vector)
-	
+
 	    This is my port of Iain Murray's
 	    http://homepages.inf.ed.ac.uk/imurray2/teaching/09mlss/slice_sample.m 
 	    which in turn derives from MacKay.  Murray notes where he found bugs in
@@ -75,8 +75,92 @@ public class MCMC {
 		}
 		return history;
 	}
+
+	public static interface ProposalDensity {
+		public double apply(double[] currentState, double[] proposedState);
+	}
 	
+	/**
+	 * the original Metropolis algorithm: assume a symmetric proposal distribution, 
+	 * so the hastings correction is unnecessary. 
+	 * thus we only need a proposer, don't need the conditional proposal density.
+	 * For full Metropolis-Hastings, see {@link #hastings}.
+	 */
+	public static List<double[]> metropolis(
+			Function<double[],Double> 	targetLogDensity,
+			Function<double[],double[]> proposer,
+			double[] initial, int numIter, FastRandom rand) {
+		
+		List<double[]> history = Lists.newArrayList();
+		double[] currentState = initial;
+		double currentLogProb = targetLogDensity.apply(currentState);
+
+		for (int iter=0; iter < numIter; iter++) {
+			double[] xprime = proposer.apply(currentState);
+			double xprimeLogProb = targetLogDensity.apply(xprime);
+			if (xprimeLogProb > currentLogProb) {
+				// accept!
+				currentState = xprime;
+				currentLogProb = xprimeLogProb;
+			} else {
+				double alpha = Math.exp(xprimeLogProb - currentLogProb);
+				if (rand.nextUniform() < alpha) {
+					// accept!
+					currentState = xprime;
+					currentLogProb = xprimeLogProb;
+				}
+			}
+			history.add(currentState);
+		}
+		return history;
+	}
 	
+	/**
+	 * the full Metropolis-Hastings algorithm.
+	 * Note all densities are in logprobs.
+	 * (for a symmetric proposal, use {@link #metropolis} which will be faster)
+	 */
+	public static List<double[]> hastings(
+			Function<double[],Double> 	targetLogDensity,
+			ProposalDensity 			proposalLogDensity,
+			Function<double[],double[]> proposer,
+			double[] initial, int numIter, FastRandom rand)
+	{
+		
+		List<double[]> history = Lists.newArrayList();
+		double[] currentState = initial;
+		double currentLogProb = targetLogDensity.apply(currentState);
+		
+		for (int iter=0; iter < numIter; iter++) {
+			double[] xprime = proposer.apply(currentState);
+
+//			double q_x_given_xprime = Math.exp(proposalLogDensity.apply(xprime, currentState));
+//			double q_xprime_given_x = Math.exp(proposalLogDensity.apply(currentState, xprime));
+//			double xprimeProb = Math.exp(targetLogDensity.apply(xprime));
+//			double alpha = xprimeProb * q_x_given_xprime / (currentProb * q_xprime_given_x);
+			
+			double lq_x_given_xprime = proposalLogDensity.apply(xprime, currentState);
+			double lq_xprime_given_x = proposalLogDensity.apply(currentState, xprime);
+			double xprimeLogProb 	 = targetLogDensity.apply(xprime);
+			double alpha = Math.exp(xprimeLogProb + lq_x_given_xprime - currentLogProb - lq_xprime_given_x);
+			
+			if (alpha >= 1) {
+				// accept!
+				currentState = xprime;
+				currentLogProb = xprimeLogProb;
+			} else {
+				double u = rand.nextUniform();
+				if (u < alpha) {
+					// accept!
+					currentState = xprime;
+					currentLogProb = xprimeLogProb;
+				}
+			}
+			history.add(currentState);
+		}
+		return history;
+	}
+
 
 	static double triangleLP(double x) {
 		boolean in_tri = 0<x && x<20;
@@ -91,7 +175,7 @@ public class MCMC {
 		> acf(x)
 		> plot(table(round(x)))
 	 */
-	static void triangleTest() {
+	static void triangleTest_Slice() {
 		Function<double[],Double> logdist = new Function<double[],Double>() {
 			@Override
 			public Double apply(double[] input) {
@@ -100,12 +184,48 @@ public class MCMC {
 		};
 		List<double[]> history = MCMC.slice_sample(logdist, new double[]{5}, new double[]{1}, 10000);
 		for (double[] h : history) {
-			U.p("SLICE " + h[0]);
+			U.p(h[0]);
 		}
 	}
+	
+	static void triangleTest_MH() {
+		Function<double[],Double> logdist = new Function<double[],Double>() {
+			@Override
+			public Double apply(double[] input) {
+				return triangleLP(input[0]);
+			}
+		};
+		ProposalDensity logq = new ProposalDensity() {
+			@Override
+			public double apply(double[] currentState, double[] proposedState) {
+				return Math.log(0.5);
+			}
+		};
+		Function<double[],double[]> proposer = new Function<double[],double[]>() {
+			@Override
+			public double[] apply(double[] current) {
+				double cur = current[0];
+				if (cur==0) return new double[]{1};
+				if (cur==19) return new double[]{18};
+				if (FastRandom.rand().nextUniform() <= 0.5) {
+					return new double[]{cur-1};
+				} else {
+					return new double[]{cur+1};
+				}
+			}
+		};
 
-	//	public static void main(String[] args) { triangleTest(); }
+		List<double[]> history = MCMC.hastings(logdist, logq, proposer, new double[1], 10000, FastRandom.rand());
+//		List<double[]> history = MCMC.metropolis(logdist, proposer, new double[1], 10000, FastRandom.rand());
+		for (double[] h : history) {
+			U.p(h[0]);
+		}
+		
+	}
 
-
+	public static void main(String[] args) {
+//		triangleTest_Slice();
+		triangleTest_MH();
+	}
 
 }
