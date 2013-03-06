@@ -86,11 +86,12 @@ public class MCMC {
 	 * thus we only need a proposer, don't need the conditional proposal density.
 	 * For full Metropolis-Hastings, see {@link #hastings}.
 	 */
-	public static List<double[]> metropolis(
+	public static MHResult metropolis(
 			Function<double[],Double> 	targetLogDensity,
 			Function<double[],double[]> proposer,
 			double[] initial, int numIter, FastRandom rand) {
-		
+		int numAccepts = 0;
+
 		List<double[]> history = Lists.newArrayList();
 		double[] currentState = initial;
 		double currentLogProb = targetLogDensity.apply(currentState);
@@ -100,65 +101,83 @@ public class MCMC {
 			double xprimeLogProb = targetLogDensity.apply(xprime);
 			if (xprimeLogProb > currentLogProb) {
 				// accept!
+				numAccepts++;
 				currentState = xprime;
 				currentLogProb = xprimeLogProb;
 			} else {
 				double alpha = Math.exp(xprimeLogProb - currentLogProb);
 				if (rand.nextUniform() < alpha) {
 					// accept!
+					numAccepts++;
 					currentState = xprime;
 					currentLogProb = xprimeLogProb;
 				}
 			}
 			history.add(currentState);
 		}
-		return history;
+		MHResult r = new MHResult();
+		r.history = history;
+		r.acceptRate = 1.0*numAccepts / numIter;
+		return r;
 	}
 	
+	public static class MHResult {
+		public double acceptRate = -1;
+		public List<double[]> history;
+		
+		public double[] last() {
+			return history.get(history.size()-1);
+		}
+	}
 	/**
 	 * the full Metropolis-Hastings algorithm.
 	 * Note all densities are in logprobs.
 	 * (for a symmetric proposal, use {@link #metropolis} which will be faster)
 	 */
-	public static List<double[]> hastings(
+	public static MHResult hastings(
 			Function<double[],Double> 	targetLogDensity,
 			ProposalDensity 			proposalLogDensity,
 			Function<double[],double[]> proposer,
 			double[] initial, int numIter, FastRandom rand)
 	{
-		
+		int numAccepts = 0;
 		List<double[]> history = Lists.newArrayList();
-		double[] currentState = initial;
-		double currentLogProb = targetLogDensity.apply(currentState);
+		double[] x = initial;  					  // current state
+		double lp_x = targetLogDensity.apply(x);  // current state's logprob
 		
 		for (int iter=0; iter < numIter; iter++) {
-			double[] xprime = proposer.apply(currentState);
+			double[] xnew = proposer.apply(x);
 
 //			double q_x_given_xprime = Math.exp(proposalLogDensity.apply(xprime, currentState));
 //			double q_xprime_given_x = Math.exp(proposalLogDensity.apply(currentState, xprime));
 //			double xprimeProb = Math.exp(targetLogDensity.apply(xprime));
 //			double alpha = xprimeProb * q_x_given_xprime / (currentProb * q_xprime_given_x);
 			
-			double lq_x_given_xprime = proposalLogDensity.apply(xprime, currentState);
-			double lq_xprime_given_x = proposalLogDensity.apply(currentState, xprime);
-			double xprimeLogProb 	 = targetLogDensity.apply(xprime);
-			double alpha = Math.exp(xprimeLogProb + lq_x_given_xprime - currentLogProb - lq_xprime_given_x);
+			double lq_x_from_xnew = proposalLogDensity.apply(xnew, x);
+			double lq_xnew_from_x = proposalLogDensity.apply(x, xnew);
+			double lp_xnew 	 = targetLogDensity.apply(xnew);
+			double alpha = Math.exp(lp_xnew - lp_x + lq_x_from_xnew - lq_xnew_from_x);
 			
 			if (alpha >= 1) {
 				// accept!
-				currentState = xprime;
-				currentLogProb = xprimeLogProb;
+				numAccepts++;
+				x = xnew;
+				lp_x = lp_xnew;
 			} else {
 				double u = rand.nextUniform();
 				if (u < alpha) {
 					// accept!
-					currentState = xprime;
-					currentLogProb = xprimeLogProb;
+					numAccepts++;
+					x = xnew;
+					lp_x = lp_xnew;
 				}
 			}
-			history.add(currentState);
+			history.add(x);
 		}
-		return history;
+		MHResult r = new MHResult();
+		r.history = history;
+		r.acceptRate = 1.0*numAccepts / numIter;
+		return r;
 	}
 
 
@@ -215,12 +234,11 @@ public class MCMC {
 			}
 		};
 
-		List<double[]> history = MCMC.hastings(logdist, logq, proposer, new double[1], 10000, FastRandom.rand());
-//		List<double[]> history = MCMC.metropolis(logdist, proposer, new double[1], 10000, FastRandom.rand());
-		for (double[] h : history) {
+		MHResult r = MCMC.hastings(logdist, logq, proposer, new double[1], 10000, FastRandom.rand());
+//		MHResult r = MCMC.metropolis(logdist, proposer, new double[1], 10000, FastRandom.rand());
+		for (double[] h : r.history) {
 			U.p(h[0]);
 		}
-		
 	}
 
 	public static void main(String[] args) {

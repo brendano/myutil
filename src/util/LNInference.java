@@ -3,15 +3,20 @@ package util;
 import com.google.common.base.Function;
 
 import edu.stanford.nlp.optimization.DiffFunction;
+import edu.stanford.nlp.util.Pair;
 
 import java.util.*;
 
 
 /**
  * Routines for posterior inference of the logistic normal "eta" parameter in
- * 		eta ~ N(mu,s), counts ~ Mult(n, softmax(eta))
+ *      (mu,s2) -> eta -> counts
+ * 		eta ~ N(mu,s2), counts ~ Mult(n, softmax(eta))
  * Goal is to infer
- * 		p(eta | mu, s, counts)
+ * 		p(eta | mu, s2, counts)
+ * 
+ * using K dimensions for eta, and K+1 dimensions for counts.
+ * 
  */
 public class LNInference {
 
@@ -31,10 +36,10 @@ public class LNInference {
 		return history.get(history.size()-1);
 	}
 	
-	static List<double[]> sampleSliceHistory(int numSliceIter,
+	/** like {@link #sampleSlice} but give sampler history */
+	public static List<double[]> sampleSliceHistory(int numSliceIter,
 			final double[] counts, final double[] etaMean, final double etaVar[])
 	{
-//		final int K = counts.length;
 		final int K = etaMean.length;
 		Function<double[], Double> lDensity  = new Function<double[],Double>() {
 			@Override
@@ -48,13 +53,13 @@ public class LNInference {
 		return MCMC.slice_sample(lDensity, init, widths, numSliceIter);
 	}
 
-	/** unnorm logprob
-	 * log P(counts | eta) P(eta | mu,s)
+	/** 
+	 * unnorm logprob f(eta) =
+	 * = log P(counts | eta) P(eta | mu,s)
 	 */
 	public static double calcUnnormLogprob(final double[] eta,
 			final double[] counts, final double[] etaMean, final double etaVar[])
 	{
-//		final int K = counts.length;
 		final int K = eta.length;
 		double[] theta = Arr.softmax1(eta);
 		double ll = 0;
@@ -94,6 +99,18 @@ public class LNInference {
 		}
 		return hessDiag;
 	}
+	
+	/** covar = [-H(logpost)]^-1
+	 * and here we use the diagonalized hessian, thus diag covar is simple.
+	 * (technical note, this is NOT the diag covar of the full MV laplace approx.)
+	 */
+	static double[] calcEtaLaplaceDiagVar(double[] etaMode,
+			double counts[], double totalCount, double etaMean[], double etaVar[]) {
+		double[] x = calcEtaHessianDiagonal(etaMode, counts, totalCount, etaMean, etaVar);
+		Arr.multiplyInPlace(x, -1);
+		Arr.powInPlace(x, -1);
+		return x;
+	}
 
 	/**
 	 * Logistic normal logposterior gradient at one eta.
@@ -131,12 +148,14 @@ public class LNInference {
     final static double newtonRelativeTol = 1e-2;
     final static double newtonLinesearchMaxIter = 5;
 
-    /** suggestion: maxIter=20 is plenty.  even maxIter=5 gives pretty good answers. */
+    /** 
+     * MAP estimate eta, under diag prior covar, using linear-time SM-Newton method.
+     * suggestion: maxIter=20 is plenty.  even maxIter=5 gives pretty good answers.
+     */
 	public static double[] estNewton(int maxIter, double[] init,
 			final double[] counts, final double totalCount,
 			final double[] etaMean, final double etaVar[]) 
     {
-//    	final int K = counts.length;
     	final int K = etaMean.length;
     	double[] eta = Arr.copy(init);
     	double currentLP = calcUnnormLogprob(eta, counts, etaMean, etaVar);
@@ -218,7 +237,6 @@ public class LNInference {
 			final double[] etaMean, final double[] etaVar,
 			FastRandom rand) 
 	{
-//		final int K = counts.length;
 		final int K = etaMean.length;
 		double[] etaMode = estNewton(5, new double[K], counts, totalCount, etaMean, etaVar);
 		double[][] hess = calcEtaHessian(etaMode, counts, totalCount, etaMean, etaVar);
@@ -232,9 +250,18 @@ public class LNInference {
 			final double[] etaMean, final double[] etaVar,
 			FastRandom rand) 
 	{
-//		final int K = counts.length;
-		final int K = etaMean.length;
-		double[] etaMode = estNewton(5, new double[K], counts, totalCount, etaMean, etaVar);
+		double[] etaMode = estNewton(5, new double[etaMean.length], counts, totalCount, etaMean, etaVar);
+		return sampleLaplaceDiagonal_givenMode(etaMode, counts, totalCount, etaMean, etaVar, rand);
+	}
+	
+	static double[] sampleLaplaceDiagonal_givenMode(
+			double[] etaMode,
+			final double[] counts, final double totalCount,
+			final double[] etaMean, final double[] etaVar,
+			FastRandom rand) 
+	{
+//		calcEtaGaussianDiagVar
+		final int K = etaMode.length; 
 		double[] hessDiag =  calcEtaHessianDiagonal(etaMode, counts, totalCount, etaMean, etaVar);
 		Arr.multiplyInPlace(hessDiag, -1);
 		double[] sample = new double[K];
@@ -243,12 +270,148 @@ public class LNInference {
 		return sample;
 	}
 	
+//	static Pair<double[],Double> sampleAndLogDensity_LaplaceDiagonal_givenMode(
+//			double[] etaMode,
+//			final double[] counts, final double totalCount,
+//			final double[] etaMean, final double[] etaVar,
+//			FastRandom rand) 
+//	{
+//		final int K = etaMode.length; 
+//		double[] hessDiag =  calcEtaHessianDiagonal(etaMode, counts, totalCount, etaMean, etaVar);
+//		Arr.multiplyInPlace(hessDiag, -1);
+//		double[] sample = new double[K];
+//		double logprob = 0;
+//		for (int k=0; k<K; k++) {
+//			sample[k] = etaMode[k] + rand.nextGaussian(0, 1/hessDiag[k]);
+//			logprob = Util.normalLL(sample[k], etaMode[k], 1/hessDiag[k]);
+//		}
+//		return U.pair(sample, logprob);
+//	}
+	
+	static double[] sampleDiagMV(double[] mean, double[] variances, FastRandom rand) {
+		int K = mean.length;
+		double[] sample = new double[K];
+		for (int k=0; k<K; k++)
+			sample[k] = mean[k] + rand.nextGaussian(0, variances[k]);
+		return sample;
+	}
+	
 	//////////////////
 	
 	public static void main(String args[]) {
-//		double[] counts = new double[]{100, 10, 3, 1, 1, 0,0,0,0,0};
-		double[] counts = new double[]{1,1,0,0,0,0,0,0,0,0};
+		double[] counts = new double[]{100, 10, 1, 1, 0,0};
 		
+		int K = counts.length;
+		double[] etaMean = new double[K];
+//		double[] etaMean = new double[]{ 0.148, 0.411, 0.364, 0.345, 0.682, -1.185, 0.482, 0.571, 0.542, 0.613};
+		double etaVar[] = new double[K]; Arrays.fill(etaVar, 1);
+		double totalCount = Arr.sum(counts);
+
+		double[] init = new double[K];
+		
+//		double[] etaMode;
+//		etaMode = LNInference.estNewton(20, init, counts, Arr.sum(counts), etaMean, etaVar);
+//		U.pf("etamode newton %s\n", Arr.sf("%.3f",eta));
+//		etaMode = LNInference.estBFGS(counts, Arr.sum(counts), etaMean, etaVar);
+//		U.pf("etamode bfgs %s\n", Arr.sf("%.3f",eta));
+		
+		int numSamples = (int) Math.round(Double.valueOf(args[0]));
+		int numTrials = Integer.valueOf(args[1]);
+		
+		for (int trial=0; trial<numTrials; trial++) {
+			System.err.print(trial+" ");
+			List<double[]> hist = sampleMHLaplaceDiag(counts, totalCount, etaMean, etaVar, numSamples, FastRandom.rand()).history;
+//			List<double[]> hist = sampleSliceHistory(numSamples, counts, etaMean, etaVar);
+			for (int i=0; i<numSamples; i++) {
+				U.pf("%d %d %s\n", trial, i, Arr.sf("%.3f", hist.get(i)));			
+			}
+		}
+		System.err.print("\n");
+		
+//		List<double[]> hist = laplaceMH_history(counts, totalCount, etaMean, etaVar, numSamples, FastRandom.rand());
+////		List<double[]> hist = sampleSliceHistory(numSamples, counts, etaMean, etaVar);
+//		for (double[] sample : hist) {
+//			U.p(sample);			
+//		}
+
+//		for (int itr=0; itr<numSamples; itr++) {
+//			U.p(sampleLaplaceDiagonal(counts, totalCount, etaMean, etaVar, FastRandom.rand()));
+//		}
+		
+    }
+	
+	/**
+	 * MH with Laplace approx proposal.
+	 * the proposal is not state-dependent: it's always the same mode-centered proposal
+	 * This seems to underestimate the tails for variables with high counts
+	 * (because the axis-aligned marginal variance isn't a good summary of the full covar matrix then, it seems.)
+	 * 
+	 * To get a single sample, take last().
+	 * suggestion: numSamples=20 for independent draw (well, as indep as you can get)
+	 */
+	public static MCMC.MHResult sampleMHLaplaceDiag(
+			final double[] counts, final double totalCount,
+			final double[] etaMean, final double[] etaVar,
+			int numSamples,	FastRandom rand) {
+		
+		Function<double[],Double> targetDensity = new Function<double[],Double>() {
+			@Override
+			public Double apply(double[] eta) {
+				return calcUnnormLogprob(eta, counts, etaMean, etaVar);
+			}
+		};
+		final int K = etaMean.length;
+		final double[] etaMode = estNewton(5, new double[K], counts, totalCount, etaMean, etaVar);
+		final double[] approxVar = calcEtaLaplaceDiagVar(etaMode, counts, totalCount, etaMean, etaVar);
+		Function<double[],double[]> proposer = new Function<double[],double[]>() {
+			@Override
+			public double[] apply(double[] currentEta_ignored) {
+				return sampleDiagMV(etaMode, approxVar, FastRandom.rand());
+			}
+		};
+		MCMC.ProposalDensity proposalDensity = new MCMC.ProposalDensity() {
+			@Override
+			public double apply(double[] currentState_ignored, double[] proposedState) {
+				return Util.diagMVLL(proposedState, etaMode, approxVar);
+			}
+		};
+		
+		MCMC.MHResult r = MCMC.hastings(targetDensity, proposalDensity, proposer, new double[K],
+				numSamples, FastRandom.rand());
+//		System.err.println("accept rate " + r.acceptRate);
+		return r;
+	}
+	
+	/** from an initial state eta, do one MH step: consider a new state, and return whether it's accepted.
+	 * returns (WasItAccepted, NewValue)
+	 * where NewValue is 'null' if not accepted.
+	 * (for Hoff 2003 approach)
+	 */
+	public static Pair<Boolean,double[]> sampleOneMH(double[] oldEta,
+			final double[] counts, final double totalCount,
+			final double[] etaMean, final double[] etaVar,
+			FastRandom rand)
+	{
+		// Construct the Laplace-diag proposal
+		final int K = etaMean.length;
+		final double[] etaMode = estNewton(5, new double[K], counts, totalCount, etaMean, etaVar);
+		final double[] approxVar = calcEtaLaplaceDiagVar(etaMode, counts, totalCount, etaMean, etaVar);
+		// Take the proposal and consider it.
+		// q(x|.) doesn't depend on RHS, so it's really just q(x) versus q(x')
+		double[] newEta = sampleDiagMV(etaMode, approxVar, rand);
+		double lq_new = Util.diagMVLL(newEta, etaMode, approxVar);
+		double lq_old = Util.diagMVLL(oldEta, etaMode, approxVar);
+		double lp_new = calcUnnormLogprob(newEta, counts, etaMean, etaVar);
+		double lp_old = calcUnnormLogprob(oldEta, counts, etaMean, etaVar);
+		double alpha = Math.exp(lp_new-lp_old + lq_old-lq_new);
+		if (alpha >= 1 || rand.nextUniform() < alpha) {
+			return U.pair(true, newEta);
+		} else {
+			return U.pair(false, null);
+		}
+	}
+	
+	static void oldTestStuff() {
 //		double[] counts = new double[]{ 5,1 };
 //		final double[] counts = new double[]{
 //				100, 10, 3, 1, 1, 0,0,0,0,0,
@@ -257,31 +420,7 @@ public class LNInference {
 //				100, 10, 3, 1, 1, 0,0,0,0,0,
 //				100, 10, 3, 1, 1, 0,0,0,0,0
 //		};
-		int K = counts.length;
-//		double[] etaMean = new double[K];
-		double[] etaMean = new double[]{ 0.148, 0.411, 0.364, 0.345, 0.682, -1.185, 0.482, 0.571, 0.542, 0.613};
-		double etaVar[] = new double[K]; Arrays.fill(etaVar,1.3);
-		double totalCount = Arr.sum(counts);
 
-		double[] init = new double[K];
-		
-		double[] eta;
-		eta = LNInference.estNewton(20, init, counts, Arr.sum(counts), etaMean, etaVar);
-//		U.pf("etamode %s\n", Arr.sf("%.3f",eta));
-		
-//		eta = LNInference.estBFGS(counts, Arr.sum(counts), etaMean, etaVar);
-//		U.p(eta);
-		
-		FastRandom rand = new FastRandom();
-		
-		int numSamples = 1;
-		sampleSlice(numSamples, counts, etaMean, etaVar);
-		for (int itr=0; itr<numSamples; itr++)
-			U.p("lap " + Arr.sf("%.3f", sampleLaplaceDiagonal(counts, totalCount, etaMean, etaVar, rand)));
-
-
-		/////////////////////////////
-		
 //		int nouter = 50*1000;
 //		int t0 = (int) System.currentTimeMillis();
 //		for (int outer=0; outer<nouter; outer++) {
@@ -292,11 +431,7 @@ public class LNInference {
 //		}
 //		int elapsed = (int) System.currentTimeMillis() - t0;
 //		U.pf("\n%g ms per iter\n", elapsed*1.0 / nouter);
-
-		
-		
-    }
-    
+	}
 	
 
 }

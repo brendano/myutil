@@ -19,6 +19,15 @@ public class Util {
 		double diff = x-mean;
 		return -Math.log(Math.sqrt(2*Math.PI * var)) - (0.5/var) * diff*diff;
 	}
+	/** multivariate normal density under diagonal covariance */
+	public static double diagMVLL(double[] x, double[] mean, double[] vars) {
+		double lp = 0;
+		for (int k=0; k < mean.length; k++) {
+			lp += normalLL(x[k], mean[k], vars[k]);
+		}
+		return lp;
+	}
+
 //	public static void main(String[] args) {
 //		U.p(normalLL(0,0,1));
 //		U.p(normalLL(3,0,1));

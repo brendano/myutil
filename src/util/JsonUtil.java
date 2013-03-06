@@ -7,6 +7,7 @@ import org.codehaus.jackson.node.*;
 
 import com.google.common.collect.Multiset;
 
+/** simplified wrapper functions for the Jackson JSON library */
 public class JsonUtil {
 	
 	public static <T> ObjectNode toJson(Multiset<T> counts) {
