@@ -93,6 +93,15 @@ public class Arr {
 					if (SloppyMath.isVeryDangerous(x)) return true;
 		return false;
 	}
+	
+	public static int[] readIntVector(String payload, String sep) {
+		String[] parts = payload.split(sep);
+		int[] ret = new int[parts.length];
+		for (int i=0; i<parts.length; i++) {
+			ret[i] = Integer.valueOf(parts[i]);
+		}
+		return ret;
+	}
 
 	public static double[][] readDoubleMatrix(String filename) {
 		int ncol = -1;
@@ -1532,6 +1541,12 @@ public class Arr {
 		 }
 	 }
 
+	 public static void addInPlace(int[] a, int b) {
+		 for (int i = 0; i < a.length; i++) {
+			 a[i] += b;
+		 }
+	 }
+
 	 /**
 	  * Add c times the array b to array a. Does it in place.
 	  */
@@ -1591,6 +1606,14 @@ public class Arr {
 		 float[] result = new float[a.length];
 		 for (int i = 0; i < a.length; i++) {
 			 result[i] = (float) (a[i] + c);
+		 }
+		 return result;
+	 }
+
+	 public static int[] add(int[] a, int c) {
+		 int[] result = new int[a.length];
+		 for (int i = 0; i < a.length; i++) {
+			 result[i] = a[i] + c;
 		 }
 		 return result;
 	 }
