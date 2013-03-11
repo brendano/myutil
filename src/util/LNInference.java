@@ -377,7 +377,7 @@ public class LNInference {
 		};
 		
 		MCMC.MHResult r = MCMC.hastings(targetDensity, proposalDensity, proposer, new double[K],
-				numSamples, FastRandom.rand());
+				numSamples, rand);
 //		System.err.println("accept rate " + r.acceptRate);
 		return r;
 	}
@@ -403,8 +403,8 @@ public class LNInference {
 		double lq_old = Util.diagMVLL(oldEta, etaMode, approxVar);
 		double lp_new = calcUnnormLogprob(newEta, counts, etaMean, etaVar);
 		double lp_old = calcUnnormLogprob(oldEta, counts, etaMean, etaVar);
-		double alpha = Math.exp(lp_new-lp_old + lq_old-lq_new);
-		if (alpha >= 1 || rand.nextUniform() < alpha) {
+		double lalpha = lp_new-lp_old + lq_old-lq_new;
+		if (lalpha >= 0 || rand.nextUniform() < Math.exp(lalpha)) {
 			return U.pair(true, newEta);
 		} else {
 			return U.pair(false, null);

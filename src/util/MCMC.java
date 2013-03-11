@@ -153,23 +153,23 @@ public class MCMC {
 //			double xprimeProb = Math.exp(targetLogDensity.apply(xprime));
 //			double alpha = xprimeProb * q_x_given_xprime / (currentProb * q_xprime_given_x);
 			
-			double lq_x_from_xnew = proposalLogDensity.apply(xnew, x);
-			double lq_xnew_from_x = proposalLogDensity.apply(x, xnew);
-			double lp_xnew 	 = targetLogDensity.apply(xnew);
-			double alpha = Math.exp(lp_xnew - lp_x + lq_x_from_xnew - lq_xnew_from_x);
+			double lq_old_from_new = proposalLogDensity.apply(xnew, x);
+			double lq_new_from_old = proposalLogDensity.apply(x, xnew);
+			double lp_new 	 = targetLogDensity.apply(xnew);
+			double lalpha = lp_new - lp_x + lq_old_from_new - lq_new_from_old;
 			
-			if (alpha >= 1) {
+			if (lalpha >= 0) {
 				// accept!
 				numAccepts++;
 				x = xnew;
-				lp_x = lp_xnew;
+				lp_x = lp_new;
 			} else {
 				double u = rand.nextUniform();
-				if (u < alpha) {
+				if (u < Math.exp(lalpha)) {
 					// accept!
 					numAccepts++;
 					x = xnew;
-					lp_x = lp_xnew;
+					lp_x = lp_new;
 				}
 			}
 			history.add(x);
