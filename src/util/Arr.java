@@ -431,6 +431,12 @@ public class Arr {
 		return result;
 	}
 
+	public static String[] subArray(String[] a, int from, int to) {
+		String[] result = new String[to-from];
+		System.arraycopy(a, from, result, 0, to-from);
+		return result;
+	}
+
 	public static List<Integer> where(int[] arr, int value) {
 		List<Integer> ret = Lists.newArrayList();
 		for (int i=0; i < arr.length; i++) {

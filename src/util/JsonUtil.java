@@ -1,8 +1,11 @@
 package util;
 
+import java.io.IOException;
 import java.util.*;
 import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.type.TypeFactory;
 import org.codehaus.jackson.node.*;
 
 import com.google.common.collect.Multiset;
@@ -10,6 +13,25 @@ import com.google.common.collect.Multiset;
 /** simplified wrapper functions for the Jackson JSON library */
 public class JsonUtil {
 	
+	// toArrayList() derived from
+	// http://stackoverflow.com/questions/9942475/convert-json-to-multiple-objects-using-jackson
+	
+	public static <T> ArrayList<T> toList(String jsonString, final Class<T> type) throws IOException {
+	    ObjectMapper mapper = new ObjectMapper();
+
+		try {
+			return mapper.readValue(jsonString, TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, type));
+		} catch (JsonMappingException e) {
+			return toArrayList(jsonString, type);
+		}
+	}
+
+	public static <T> ArrayList<T> toArrayList(final String jsonString, final Class<T> type) throws IOException {
+	    final ObjectMapper mapper = new ObjectMapper();
+
+		return new ArrayList<T>() {{ add(mapper.readValue(jsonString, type));}};
+	}
+
 	public static <T> ObjectNode toJson(Multiset<T> counts) {
 		ObjectNode jmap = newObject();
 		for (Multiset.Entry<T> e : counts.entrySet()) {
