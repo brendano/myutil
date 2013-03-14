@@ -9,24 +9,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.ObjectMapper;
 
 import edu.stanford.nlp.util.Pair;
 import edu.stanford.nlp.util.StringUtils;
+import edu.stanford.nlp.util.Triple;
 
 /** misc utilities & convenience wrappers **/
 public class U {
-	public static JsonNode readJson(String jsonStr) throws JsonProcessingException, IOException {
-		ObjectMapper mapper = new ObjectMapper();
-		return mapper.readTree(jsonStr);
-	}
+	
 	/** static creator so don't have to specify types **/
 	public static <S,T> Pair<S,T> pair(S o1, T o2) {
-		return new Pair(o1, o2);
+		return new Pair<S,T>(o1, o2);
 	}
-	
+
+	/** static creator so don't have to specify types **/
+	public static <S,T,U> Triple<S,T,U> triple(S o1, T o2, U o3) {
+		return new Triple<S,T,U>(o1, o2, o3);
+	}
 	
 	public static final String ANSI_RESET 	= "\u001B[0m";
 	public static final String ANSI_BOLD 	= "\u001B[1m";	

@@ -3,6 +3,7 @@ package util;
 import java.io.IOException;
 import java.util.*;
 import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.TypeFactory;
@@ -10,26 +11,42 @@ import org.codehaus.jackson.node.*;
 
 import com.google.common.collect.Multiset;
 
-/** simplified wrapper functions for the Jackson JSON library */
+import edu.stanford.nlp.util.Pair;
+
+/** simplified wrapper functions for the Jackson JSON library 
+ * this is half-baked, still learning the right way to use the library
+ */
 public class JsonUtil {
 	
-	// toArrayList() derived from
+	public static ObjectMapper om;
+	static {
+		om = new ObjectMapper();
+	}
+	
+	public static void main(String args[]) {
+		List<String> x = toList(args[0], String.class);
+		U.p(x);
+	}
+	
+	//////////////////////////////////////
+	
+	// toList() derived from
 	// http://stackoverflow.com/questions/9942475/convert-json-to-multiple-objects-using-jackson
 	
-	public static <T> ArrayList<T> toList(String jsonString, final Class<T> type) throws IOException {
-	    ObjectMapper mapper = new ObjectMapper();
-
+	public static <T> ArrayList<T> toList(String jsonString, final Class<T> type) {
 		try {
-			return mapper.readValue(jsonString, TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, type));
-		} catch (JsonMappingException e) {
-			return toArrayList(jsonString, type);
+			return om.readValue(jsonString, TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, type));
+		} catch (IOException e) {
+			return null;
 		}
 	}
 
-	public static <T> ArrayList<T> toArrayList(final String jsonString, final Class<T> type) throws IOException {
-	    final ObjectMapper mapper = new ObjectMapper();
-
-		return new ArrayList<T>() {{ add(mapper.readValue(jsonString, type));}};
+	public static <T> ArrayList<T> toList(JsonNode jsonNode, final Class<T> type) {
+		try {
+			return om.readValue(jsonNode, TypeFactory.defaultInstance().constructCollectionType(ArrayList.class, type));
+		} catch (IOException e) {
+			return null;
+		}
 	}
 
 	public static <T> ObjectNode toJson(Multiset<T> counts) {
@@ -48,6 +65,17 @@ public class JsonUtil {
     	return jlist;
     }
 
+    public static <S, T> JsonNode toJson(final Pair<S,T> pair) {
+        try {
+        	List<Object> x = new ArrayList<>();
+        	x.add( (Object) pair.first);
+        	x.add( (Object) pair.second);
+            return new ObjectMapper().valueToTree(x);
+        } catch(Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     ///////// from Play framework below
     
     /**
@@ -57,7 +85,7 @@ public class JsonUtil {
      */
     public static JsonNode toJson(final Object data) {
         try {
-            return new ObjectMapper().valueToTree(data);
+            return om.valueToTree(data);
         } catch(Exception e) {
             throw new RuntimeException(e);
         }
@@ -71,7 +99,7 @@ public class JsonUtil {
      */
     public static <A> A fromJson(JsonNode json, Class<A> clazz) {
         try {
-            return new ObjectMapper().treeToValue(json, clazz);
+            return om.treeToValue(json, clazz);
         } catch(Exception e) {
             throw new RuntimeException(e);
         }
@@ -81,7 +109,7 @@ public class JsonUtil {
      * Creates a new empty ObjectNode.
      */ 
     public static ObjectNode newObject() {
-        return new ObjectMapper().createObjectNode();
+        return om.createObjectNode();
     }
     
     /**
@@ -96,9 +124,14 @@ public class JsonUtil {
      */
     public static JsonNode parse(String src) {
         try {
-            return new ObjectMapper().readValue(src, JsonNode.class);
+            return om.readValue(src, JsonNode.class);
         } catch(Throwable t) {
             throw new RuntimeException(t);
         }
     }
+
+	public static JsonNode readJson(String jsonStr) throws JsonProcessingException, IOException {
+		return om.readTree(jsonStr);
+	}
+	
 }
