@@ -376,8 +376,10 @@ public class LBFGS {
 	enum LinesearchAlgorithm {
 	    /** The default algorithm (MoreThuente method). */
 //	    LBFGS_LINESEARCH_DEFAULT,
+		
 	    /** MoreThuente method proposd by More and Thuente. */
 	    LBFGS_LINESEARCH_MORETHUENTE,
+	    
 	    /**
 	     * Backtracking method with the Armijo condition.
 	     *  The backtracking method finds the step length such that it satisfies
@@ -388,8 +390,10 @@ public class LBFGS {
 	     *  a is the step length.
 	     */
 	    LBFGS_LINESEARCH_BACKTRACKING_ARMIJO,
+	    
 	    /** The backtracking method with the defualt (regular Wolfe) condition. */
 //	    LBFGS_LINESEARCH_BACKTRACKING,
+	    
 	    /**
 	     * Backtracking method with regular Wolfe condition.
 	     *  The backtracking method finds the step length such that it satisfies
@@ -401,6 +405,7 @@ public class LBFGS {
 	     *  a is the step length.
 	     */
 	    LBFGS_LINESEARCH_BACKTRACKING_WOLFE,
+	    
 	    /**
 	     * Backtracking method with strong Wolfe condition.
 	     *  The backtracking method finds the step length such that it satisfies
@@ -453,7 +458,12 @@ public class LBFGS {
 	};
 	 */
 
-	static class Params {
+	/** 
+	 * Parameters to control the optimizer.
+	 * To control convergence/runtime, see: {@link #max_iterations} and {@link #epsilon}
+	 * To get L1 penalization, see: {@link #orthantwise_c}, {@link #orthantwise_start}, {@link #orthantwise_end}
+	 */
+	public static class Params {
 	    /**
 	     * The number of corrections to approximate the inverse hessian matrix.
 	     *  The L-BFGS routine stores the computation results of previous \ref m
@@ -462,7 +472,7 @@ public class LBFGS {
 	     *  (corrections). The default value is \c 6. Values less than \c 3 are
 	     *  not recommended. Large values will result in excessive computing time.
 	     */
-	    int             m = 6;
+		public int             m = 6;
 
 	    /**
 	     * Epsilon for convergence test.
@@ -472,16 +482,16 @@ public class LBFGS {
 	     *  where ||.|| denotes the Euclidean (L2) norm. The default value is
 	     *  \c 1e-5.
 	     */
-	    double epsilon = 1e-5;
+		public double epsilon = 1e-5;
 
 	    /**
 	     * Distance for delta-based convergence test.
 	     *  This parameter determines the distance, in iterations, to compute
 	     *  the rate of decrease of the objective function. If the value of this
 	     *  parameter is zero, the library does not perform the delta-based
-	     *  convergence test. The default value is \c 0.
+	     *  convergence test.
 	     */
-	    int             past = 0;
+		public int             past = 0;
 
 	    /**
 	     * Delta for convergence test.
@@ -493,7 +503,7 @@ public class LBFGS {
 	     *  the objective value of the current iteration.
 	     *  The default value is \c 0.
 	     */
-	    double delta = 1e-5;
+		public double delta = 1e-5;
 
 	    /**
 	     * The maximum number of iterations.
@@ -503,21 +513,23 @@ public class LBFGS {
 	     *  optimization process until a convergence or error. The default value
 	     *  is \c 0.
 	     */
-	    int             max_iterations = 0;
+		public int             max_iterations = 0;
 
 	    /**
 	     * The line search algorithm.
 	     *  This parameter specifies a line search algorithm to be used by the
 	     *  L-BFGS routine.
 	     */
-	    LinesearchAlgorithm linesearch = LinesearchAlgorithm.LBFGS_LINESEARCH_MORETHUENTE;
+//	    LinesearchAlgorithm linesearch = LinesearchAlgorithm.LBFGS_LINESEARCH_MORETHUENTE;
+	    // BTO: morethuente was default in LibLBFGS, disabling for now
+	    LinesearchAlgorithm linesearch = LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_WOLFE;
 
 	    /**
 	     * The maximum number of trials for the line search.
 	     *  This parameter controls the number of function and gradients evaluations
-	     *  per iteration for the line search routine. The default value is \c 20.
+	     *  per iteration for the line search routine. The default value is \c 40.
 	     */
-	    int             max_linesearch = 40;
+	    public int             max_linesearch = 40;
 
 	    /**
 	     * The minimum step of the line search routine.
@@ -526,7 +538,7 @@ public class LBFGS {
 	     *  problem is extremely badly scaled (in which case the exponents should
 	     *  be increased).
 	     */
-	    double min_step = 1e-20;
+	    public double min_step = 1e-20;
 
 	    /**
 	     * The maximum step of the line search.
@@ -535,14 +547,14 @@ public class LBFGS {
 	     *  problem is extremely badly scaled (in which case the exponents should
 	     *  be increased).
 	     */
-	    double max_step = 1e20;
+	    public double max_step = 1e20;
 
 	    /**
 	     * A parameter to control the accuracy of the line search routine.
 	     *  The default value is \c 1e-4. This parameter should be greater
 	     *  than zero and smaller than \c 0.5.
 	     */
-	    double ftol = 1e-4;
+	    public double ftol = 1e-4;
 
 	    /**
 	     * A coefficient for the Wolfe condition.
@@ -553,7 +565,7 @@ public class LBFGS {
 	     *  The default value is \c 0.9. This parameter should be greater
 	     *  the \ref ftol parameter and smaller than \c 1.0.
 	     */
-	    double wolfe = 0.9;
+	    public double wolfe = 0.9;
 
 	    /**
 	     * A parameter to control the accuracy of the line search routine.
@@ -565,7 +577,7 @@ public class LBFGS {
 	     *  greater than the \ref ftol parameter (\c 1e-4) and smaller than
 	     *  \c 1.0.
 	     */
-	    double gtol = 0.9;
+	    public double gtol = 0.9;
 
 	    /**
 	     * The machine precision for floating-point values.
@@ -574,7 +586,7 @@ public class LBFGS {
 	     *  with the status code (::LBFGSERR_ROUNDING_ERROR) if the relative width
 	     *  of the interval of uncertainty is less than this parameter.
 	     */
-	    double xtol = 1e-16;
+	    public double xtol = 1e-16;
 
 	    /**
 	     * Coeefficient for the L1 norm of variables.
@@ -589,7 +601,7 @@ public class LBFGS {
 	     *  the function value F(x) and gradients G(x) as usual. The default value
 	     *  is zero.
 	     */
-	    double orthantwise_c = 0;
+	    public double orthantwise_c = 0;
 
 	    /**
 	     * Start index for computing L1 norm of the variables.
@@ -603,7 +615,7 @@ public class LBFGS {
 	     *  variables, x_1, ..., x_{b-1} (e.g., a bias term of logistic
 	     *  regression) from being regularized. The default value is zero.
 	     */
-	    int             orthantwise_start = 0;
+	    public int             orthantwise_start = 0;
 
 	    /**
 	     * End index for computing L1 norm of the variables.
@@ -612,7 +624,7 @@ public class LBFGS {
 	     *  specifies the index number at which the library stops computing the
 	     *  L1 norm of the variables x,
 	     */
-	    int             orthantwise_end = -1;
+	    public int             orthantwise_end = -1;
 	};
 
 
@@ -626,20 +638,21 @@ public class LBFGS {
 	 *  this function to evaluate the values of the objective function and its
 	 *  gradients, given current values of variables.
 	 *  
+	 *  Protocol: receive x, fill in g, return objective.
+	 *  
 	 *  @param  x           The current values of variables.
 	 *  @param  g           The gradient vector. The callback function must compute
 	 *                      the gradient values for the current variables.
+	 *  @param  n           The number of variables.
 	 *  @param  step        The current step of the line search routine.
 	 *  @retval  			The value of the objective function for the current
 	 *                          variables.
-	 *                          
-	 *  @param  instance    The user data sent for lbfgs() function by the client.  BTO REMOVED
-	 *  @param  n           The number of variables. BTO REMOVED
 	 */
-	static interface Function {
+	public static interface Function {
 		/** receive x. fill in g. return objective. */
 		public double evaluate(final double[] x, double[] g, int n, double step);
 	}
+	
 //	typedef lbfgsfloatval_t (*lbfgs_evaluate_t)(
 //	    void *instance,
 //	    const lbfgsfloatval_t *x,
@@ -662,13 +675,11 @@ public class LBFGS {
 	 *  @param  xnorm       The Euclidean norm of the variables.
 	 *  @param  gnorm       The Euclidean norm of the gradients.
 	 *  @param  step        The line-search step used for this iteration.
+	 *  @param  n           The number of variables.
 	 *  @param  k           The iteration count.
 	 *  @param  ls          The number of evaluations called for this iteration.
 	 *  @retval int         Zero to continue the optimization process. Returning a
 	 *                      non-zero value will cancel the optimization process.
-
-	 *  @param  n           The number of variables.  BTO REMOVED
-
 	 */
 	static interface ProgressCallback {
 		public int apply(
@@ -717,27 +728,14 @@ public class LBFGS {
 	In this formula, ||.|| denotes the Euclidean norm.
 	*/
 	
-
-	public static Result lbfgs(
-		    double[] x,
-		    Function proc_evaluate)
-	{
-		return lbfgs(x, proc_evaluate, null, new Params());
-	}
-
-	public static Result lbfgs(
-		    double[] x,
-		    Function proc_evaluate,
-		    ProgressCallback proc_progress)
-	{
-		return lbfgs(x, proc_evaluate, proc_progress, new Params());
-	}
-
 	static class Result {
 		Status status;
 		int additionalStatus;
 		double objective = Double.MAX_VALUE;
 		public Result(Status s) { status=s; }
+		public String toString() {
+			return String.format("status=%s obj=%g", status, objective);
+		}
 	}
 
 	static double max3(double a, double b, double c) { return Math.max(Math.max(a,b), c); }
@@ -757,6 +755,22 @@ public class LBFGS {
 	}
 //	typedef struct tag_iteration_data iteration_data_t;
 
+	/** See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
+	public static Result lbfgs(
+		    double[] x,
+		    Function proc_evaluate)
+	{
+		return lbfgs(x, proc_evaluate, null, new Params());
+	}
+
+	/** See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
+	public static Result lbfgs(
+		    double[] x,
+		    Function proc_evaluate,
+		    ProgressCallback proc_progress)
+	{
+		return lbfgs(x, proc_evaluate, proc_progress, new Params());
+	}
 
 	/**
 	 * Start a L-BFGS optimization.
@@ -764,15 +778,7 @@ public class LBFGS {
 	 *  @param  n           The number of variables.
 	 *  @param  x           The array of variables. A client program can set
 	 *                      default values for the optimization and receive the
-	 *                      optimization result through this array. This array
-	 *                      must be allocated by ::lbfgs_malloc function
-	 *                      for libLBFGS built with SSE/SSE2 optimization routine
-	 *                      enabled. The library built without SSE/SSE2
-	 *                      optimization does not have such a requirement.
-	 *  @param  ptr_fx      The pointer to the variable that receives the final
-	 *                      value of the objective function for the variables.
-	 *                      This argument can be set to \c NULL if the final
-	 *                      value of the objective function is unnecessary.
+	 *                      optimization result through this array.
 	 *  @param  proc_evaluate   The callback function to provide function and
 	 *                          gradient evaluations given a current values of
 	 *                          variables. A client program must implement a
@@ -784,16 +790,10 @@ public class LBFGS {
 	 *                          the objective function) of the minimization
 	 *                          process. This argument can be set to \c NULL if
 	 *                          a progress report is unnecessary.
-	 *  @param  instance    A user data for the client program. The callback
-	 *                      functions will receive the value of this argument.
 	 *  @param  param       The pointer to a structure representing parameters for
 	 *                      L-BFGS optimization. A client program can set this
-	 *                      parameter to \c NULL to use the default parameters.
-	 *                      Call lbfgs_parameter_init() function to fill a
-	 *                      structure with the default values.
-	 *  @retval int         The status code. This function returns zero if the
-	 *                      minimization process terminates without an error. A
-	 *                      non-zero value indicates an error.
+	 *                      parameter to NULL to use the default parameters.
+	 *  @retval Result      The status code and final objective.
 	 */
 	public static Result lbfgs(
 	    double[] x,
@@ -916,6 +916,7 @@ public class LBFGS {
 
 	    /* Initialize the limited memory. */
 	    for (i = 0;i < m;++i) {
+	    	lm[i] = new iteration_data_t();
 	        it = lm[i];
 	        it.alpha = 0;
 	        it.ys = 0;
@@ -995,7 +996,7 @@ public class LBFGS {
 	                param.orthantwise_c, param.orthantwise_start, param.orthantwise_end
 	                );
 	        }
-	        if (ls.isError()) {
+	        if (ls!=null && ls.isError()) {
 	            /* Revert to the previous point. */
 	            veccpy(x, xp, n);
 	            veccpy(g, gp, n);
@@ -1149,6 +1150,7 @@ public class LBFGS {
 //            *ptr_fx = fx;
 //        }
 
+	    ret.objective = fx[0];
         return ret;
 	}
 
@@ -1168,16 +1170,30 @@ public class LBFGS {
 	    }
 	}
 	static void vecncpy(double[] y, double[] x, int n) {
-	    int i;
-
-	    for (i = 0;i < n;++i) {
+	    for (int i = 0;i < n;++i) {
 	        y[i] = -x[i];
 	    }
 	}
-	static void vecset(double[] x, final double c, final int n) { }
-	static void vecdiff(double[] z, final double[] x, final double[] y, final int n) { }
-	static void vecscale(double[] y, final double c, final int n) { }
-	static void vecmul(double[] y, final double[] x, final int n) { }
+	static void vecset(double[] x, final double c, final int n) { 
+		for (int i=0; i < x.length; i++) {
+			x[i] = c;
+		}
+	}
+	static void vecdiff(double[] z, final double[] x, final double[] y, final int n) {
+	    for (int i = 0; i < n; ++i) {
+	        z[i] = x[i] - y[i];
+	    }
+	}
+	static void vecscale(double[] y, final double c, final int n) {
+	    for (int i = 0; i < n; ++i) {
+	        y[i] *= c;
+	    }
+	}
+	static void vecmul(double[] y, final double[] x, final int n) {
+	    for (int i = 0; i < n; ++i) {
+	        y[i] *= x[i];
+	    }
+	}
 	static double vec2norm(final double[] x, final int n)
 	{
 	    double s = vecdot(x, x, n);
@@ -1375,7 +1391,7 @@ public class LBFGS {
 		public Status go(int n, double[] x, double[] f, double[] g, double[] s,
 				double[] stp, double[] xp, double[] gp, double[] wa,
 				callback_data_t cd, Params param) {
-			// TODO Auto-generated method stub
+			assert false : "unimplemented";
 			return null;
 		}
 	}
@@ -1958,5 +1974,74 @@ public class LBFGS {
 	}
 
 
+	////////////////////////////////////////////////////
+	
+	static void linreg_test(final double[][] X, final double[] Y) {
+		final int Nfeat = X[0].length;
+		Function f = new Function() {
+			@Override
+			public double evaluate(double[] beta, double[] g, int n, double step) {
+				double sqloss = 0;
+				Arr.fill(g, 0); // is this necessary?
+				for (int i=0; i<n; i++) {
+					double pred = Arr.innerProduct(beta, X[i]);
+					double resid = pred - Y[i];
+					sqloss += Math.pow(resid, 2);
+					for (int j=0; j<Nfeat; j++) {
+						g[j] += X[i][j] * resid;
+					}
+				}
+				return sqloss;
+			}
+		};
+		Params p = new Params();
+		ProgressCallback cb = new ProgressCallback() {
+			@Override
+			public int apply(double[] x, double[] g, double fx, double xnorm,
+					double gnorm, double step, int n, int k, Status ls) {
+				U.pf("ITER %d obj=%g sol=%.6g\n", k, fx, x[0]);
+				return 0;
+			}
+		};
+		double[] coef = new double[Nfeat];
+		Result r = LBFGS.lbfgs(coef, f, cb, p);
+		U.p(r);
+		U.p(coef);
+	}
+	
+
+	static void mean_test() {
+		final int target = 3;
+		Function f = new Function() {
+			@Override
+			public double evaluate(double[] x, double[] g, int n, double step) {
+				double resid = x[0] - target;
+				double sqloss = Math.pow(resid, 2);
+				g[0] = resid; 
+				return sqloss;
+			}
+		};
+		Params p = new Params();
+		ProgressCallback cb = new ProgressCallback() {
+			@Override
+			public int apply(double[] x, double[] g, double fx, double xnorm,
+					double gnorm, double step, int n, int k, Status ls) {
+				U.pf("ITER %d sol=%s obj=%g\n", k, Arr.toString(x), fx);
+				return 0;
+			}
+		};
+		double[] sol = new double[1];
+		U.p(sol);
+		Result r = LBFGS.lbfgs(sol, f, cb, p);
+		U.p(r);
+		U.p(sol);
+	}
+	
+	public static void main(String[] args) {
+//		mean_test();
+		double[][] X = Arr.readDoubleMatrix(args[0]);
+		double[] Y = Arr.readDoubleVector(args[1]);
+		linreg_test(X,Y);
+	}
 
 }
