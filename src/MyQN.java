@@ -430,19 +430,7 @@ public class MyQN {
 		);
 	}
 
-	/**
-	 * L-BFGS optimization parameters.
-	 *  Call lbfgs_parameter_init() function to initialize parameters to the
-	 *  default values.
-	 */
-// Defaults
-//	static const lbfgs_parameter_t _defparam = {
-//	    6, 1e-5, 0, 1e-5,
-//	    0, LBFGS_LINESEARCH_DEFAULT, 40,
-//	    1e-20, 1e20, 1e-4, 0.9, 0.9, 1.0e-16,
-//	    0.0, 0, -1,
-//	};
-	
+
 	/*
 	 * static const lbfgs_parameter_t _defparam = {
     m 6, 
@@ -751,15 +739,7 @@ public class MyQN {
 		double objective = Double.MAX_VALUE;
 		public Result(Status s) { status=s; }
 	}
-	
 
-// TODO need to port these too, vector operations and stuff.  like Arr math.
-//	/* No CPU specific optimization. */
-//	#include "arithmetic_ansi.h"
-
-//	#define min2(a, b)      ((a) <= (b) ? (a) : (b))
-//	#define max2(a, b)      ((a) >= (b) ? (a) : (b))
-//	#define max3(a, b, c)   max2(max2((a), (b)), (c));
 	static double max3(double a, double b, double c) { return Math.max(Math.max(a,b), c); }
 
 	static class callback_data_t {
@@ -1169,37 +1149,30 @@ public class MyQN {
 //            *ptr_fx = fx;
 //        }
 
-//        vecfree(pf);
-//
-//        /* Free memory blocks used by this function. */
-//        if (lm != NULL) {
-//            for (i = 0;i < m;++i) {
-//                vecfree(lm[i].s);
-//                vecfree(lm[i].y);
-//            }
-//            vecfree(lm);
-//        }
-//        vecfree(pg);
-//        vecfree(w);
-//        vecfree(d);
-//        vecfree(gp);
-//        vecfree(g);
-//        vecfree(xp);
-
         return ret;
 	}
 
+	//////////////////////
+	
 	static double vecdot(double[] a, double[] b, int n) {
 		return Arr.innerProduct(a, b);
 	}
 	static void veccpy(double[] y, double[] x, int n) {
-		// TODO
+		System.arraycopy(x,0, y,0, n);
 	}
 	static void vecadd(double[] y, final double[] x, final double c, final int n) {
-		// TODO
+	    int i;
+
+	    for (i = 0;i < n;++i) {
+	        y[i] += c * x[i];
+	    }
 	}
 	static void vecncpy(double[] y, double[] x, int n) {
-		// TODO
+	    int i;
+
+	    for (i = 0;i < n;++i) {
+	        y[i] = -x[i];
+	    }
 	}
 	static void vecset(double[] x, final double c, final int n) { }
 	static void vecdiff(double[] z, final double[] x, final double[] y, final int n) { }
@@ -1207,14 +1180,14 @@ public class MyQN {
 	static void vecmul(double[] y, final double[] x, final int n) { }
 	static double vec2norm(final double[] x, final int n)
 	{
-//	    vecdot(s, x, x, n);
-//	    *s = (lbfgsfloatval_t)sqrt(*s);
+	    double s = vecdot(x, x, n);
+	    return Math.sqrt(s);
 	}
 
 	static double vec2norminv(final double[] x, final int n)
 	{
-//	    vec2norm(s, x, n);
-//	    *s = (lbfgsfloatval_t)(1.0 / *s);
+	    double s = vec2norm(x, n);
+	    return 1.0 / s;
 	}
 
 
@@ -1397,6 +1370,14 @@ public class MyQN {
 
 
 	static class line_search_morethuente implements line_search_proc {
+
+		@Override
+		public Status go(int n, double[] x, double[] f, double[] g, double[] s,
+				double[] stp, double[] xp, double[] gp, double[] wa,
+				callback_data_t cd, Params param) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 //	static class line_search_morethuente implements line_search_proc {
