@@ -765,6 +765,7 @@ public class MyQN {
 
 	static class iteration_data_t {
 	    double alpha;
+	    // BTO tricky, i think these were aliased pointers or something?
 	    double[] s;     /* [n] */
 	    double[] y;     /* [n] */
 	    double ys;     /* vecdot(y, s) */
@@ -828,7 +829,8 @@ public class MyQN {
 	    double[] xp;
 	    double g[] , gp[] , pg[];
 	    double d[], w[], pf[];
-	    iteration_data_t lm, it;
+	    iteration_data_t[] lm;
+	    iteration_data_t it;
 	    double ys, yy;
 	    double xnorm, gnorm, beta;
 	    double fx = 0;
@@ -887,65 +889,65 @@ public class MyQN {
 	    }
 	    if (param.orthantwise_c != 0.) {
             /* Only the backtracking method is available. */
-            linesearch = line_search_backtracking_owlqn;
+            linesearch = new line_search_backtracking_owlqn();
 	    } else {
 	        switch (param.linesearch) {
 	        case LBFGS_LINESEARCH_MORETHUENTE:
-	            linesearch = line_search_morethuente;
+	            linesearch = new line_search_morethuente();
 	            break;
 	        case LBFGS_LINESEARCH_BACKTRACKING_ARMIJO:
 	        case LBFGS_LINESEARCH_BACKTRACKING_WOLFE:
 	        case LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE:
-	            linesearch = line_search_backtracking;
+	            linesearch = new line_search_backtracking();
 	            break;
 	        default:
-	            return LBFGSERR_INVALID_LINESEARCH;
+	            return new Result(Status.LBFGSERR_INVALID_LINESEARCH);
 	        }
 	    }
 
 	    /* Allocate working space. */
-	    xp = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	    g = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	    gp = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	    d = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	    w = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	    if (xp == NULL || g == NULL || gp == NULL || d == NULL || w == NULL) {
-	        ret = LBFGSERR_OUTOFMEMORY;
-	        goto lbfgs_exit;
-	    }
+	    xp = new double[n];
+	    g = new double[n];
+	    gp = new double[n];
+	    d = new double[n];
+	    w = new double[n];
+//	    if (xp == NULL || g == NULL || gp == NULL || d == NULL || w == NULL) {
+//	        ret = LBFGSERR_OUTOFMEMORY;
+//	        goto lbfgs_exit;
+//	    }
 
 	    if (param.orthantwise_c != 0.) {
 	        /* Allocate working space for OW-LQN. */
-	        pg = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	        if (pg == NULL) {
-	            ret = LBFGSERR_OUTOFMEMORY;
-	            goto lbfgs_exit;
-	        }
+	        pg = new double[n];
+//	        if (pg == NULL) {
+//	            ret = LBFGSERR_OUTOFMEMORY;
+//	            goto lbfgs_exit;
+//	        }
 	    }
 
 	    /* Allocate limited memory storage. */
-	    lm = (iteration_data_t*)vecalloc(m * sizeof(iteration_data_t));
-	    if (lm == NULL) {
-	        ret = LBFGSERR_OUTOFMEMORY;
-	        goto lbfgs_exit;
-	    }
+	    lm = new iteration_data_t[m];
+//	    if (lm == NULL) {
+//	        ret = LBFGSERR_OUTOFMEMORY;
+//	        goto lbfgs_exit;
+//	    }
 
 	    /* Initialize the limited memory. */
 	    for (i = 0;i < m;++i) {
-	        it = &lm[i];
-	        it->alpha = 0;
-	        it->ys = 0;
-	        it->s = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	        it->y = (lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
-	        if (it->s == NULL || it->y == NULL) {
-	            ret = LBFGSERR_OUTOFMEMORY;
-	            goto lbfgs_exit;
-	        }
+	        it = lm[i];
+	        it.alpha = 0;
+	        it.ys = 0;
+	        it.s = new double[n]; //(lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
+	        it.y = new double[n]; //(lbfgsfloatval_t*)vecalloc(n * sizeof(lbfgsfloatval_t));
+//	        if (it->s == NULL || it->y == NULL) {
+//	            ret = LBFGSERR_OUTOFMEMORY;
+//	            goto lbfgs_exit;
+//	        }
 	    }
 
 	    /* Allocate an array for storing previous values of the objective function. */
 	    if (0 < param.past) {
-	        pf = (lbfgsfloatval_t*)vecalloc(param.past * sizeof(lbfgsfloatval_t));
+	        pf = new double[param.past]; //(lbfgsfloatval_t*)vecalloc(param.past * sizeof(lbfgsfloatval_t));
 	    }
 
 	    /* Evaluate the function value and its gradient. */
@@ -1153,30 +1155,6 @@ public class MyQN {
 	         */
 	        step = 1.0;
 	    }
-
-	lbfgs_exit:
-	    /* Return the final value of the objective function. */
-	    if (ptr_fx != NULL) {
-	        *ptr_fx = fx;
-	    }
-
-	    vecfree(pf);
-
-	    /* Free memory blocks used by this function. */
-	    if (lm != NULL) {
-	        for (i = 0;i < m;++i) {
-	            vecfree(lm[i].s);
-	            vecfree(lm[i].y);
-	        }
-	        vecfree(lm);
-	    }
-	    vecfree(pg);
-	    vecfree(w);
-	    vecfree(d);
-	    vecfree(gp);
-	    vecfree(g);
-	    vecfree(xp);
-
 	    return ret;
 	}
 
@@ -1184,7 +1162,7 @@ public class MyQN {
 
 	static class line_search_backtracking implements line_search_proc {
 	
-	int go(
+	public int go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1569,19 +1547,19 @@ public class MyQN {
 	 */
 	static double CUBIC_MINIMIZER(double u, double fu, double du, double v, double fv, double dv) {
 //	#define CUBIC_MINIMIZER(cm, u, fu, du, v, fv, dv) \
-//	    d = (v) - (u); \
-//	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-//	    p = fabs(theta); \
-//	    q = fabs(du); \
-//	    r = fabs(dv); \
-//	    s = max3(p, q, r); \
-//	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
-//	    a = theta / s; \
-//	    gamma = s * sqrt(a * a - ((du) / s) * ((dv) / s)); \
-//	    if ((v) < (u)) gamma = -gamma; \
-//	    p = gamma - (du) + theta; \
-//	    q = gamma - (du) + gamma + (dv); \
-//	    r = p / q; \
+	    double d = (v) - (u);
+	    double theta = ((fu) - (fv)) * 3 / d + (du) + (dv);
+	    double p = Math.abs(theta);
+	    double q = Math.abs(du);
+	    double r = Math.abs(dv);
+	    double s = max3(p, q, r);
+	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */
+	    double a = theta / s;
+	    double gamma = s * Math.sqrt(a * a - ((du) / s) * ((dv) / s));
+	    if ((v) < (u)) gamma = -gamma;
+	    p = gamma - (du) + theta;
+	    q = gamma - (du) + gamma + (dv);
+	    r = p / q;
 		double cm = (u) + r * d;
 	    return cm;
 	}
@@ -1601,43 +1579,44 @@ public class MyQN {
 //	#define CUBIC_MINIMIZER2(cm, u, fu, du, v, fv, dv, xmin, xmax) \
 	static double CUBIC_MINIMIZER2(double u, double fu, double du, double v, 
 			double fv, double dv, double xmin, double xmax) {
-//	    d = (v) - (u); \
-//	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-//	    p = fabs(theta); \
-//	    q = fabs(du); \
-//	    r = fabs(dv); \
-//	    s = max3(p, q, r); \
-//	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
-//	    a = theta / s; \
-//	    gamma = s * sqrt(max2(0, a * a - ((du) / s) * ((dv) / s))); \
-//	    if ((u) < (v)) gamma = -gamma; \
-//	    p = gamma - (dv) + theta; \
-//	    q = gamma - (dv) + gamma + (du); \
-//	    r = p / q; \
+	    double d = (v) - (u);
+	    double theta = ((fu) - (fv)) * 3 / d + (du) + (dv);
+	    double p = Math.abs(theta);
+	    double q = Math.abs(du);
+	    double r = Math.abs(dv);
+	    double s = max3(p, q, r);
+	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */
+	    double a = theta / s;
+	    double gamma = s * Math.sqrt(Math.max(0, a * a - ((du) / s) * ((dv) / s)));
+	    if ((u) < (v)) gamma = -gamma;
+	    p = gamma - (dv) + theta;
+	    q = gamma - (dv) + gamma + (du);
+	    r = p / q;
 	    double cm;
-//	    if (r < 0. && gamma != 0.) { \
-//	        (cm) = (v) - r * d; \
-//	    } else if (a < 0) { \
-//	        (cm) = (xmax); \
-//	    } else { \
-//	        (cm) = (xmin); \
-//	    }
+	    if (r < 0. && gamma != 0.) {
+	        (cm) = (v) - r * d;
+	    } else if (a < 0) {
+	        (cm) = (xmax);
+	    } else {
+	        (cm) = (xmin);
+	    }
 	    return cm;
 	}
 
 	/**
 	 * Find a minimizer of an interpolated quadratic function.
-	 *  @param  qm      The minimizer of the interpolated quadratic.
+	 *  @return      The minimizer of the interpolated quadratic.
 	 *  @param  u       The value of one point, u.
 	 *  @param  fu      The value of f(u).
 	 *  @param  du      The value of f'(u).
 	 *  @param  v       The value of another point, v.
 	 *  @param  fv      The value of f(v).
 	 */
-	static double QUARD_MINIMIZER(u, fu, du, v, fv) {
+	static double QUARD_MINIMIZER(double u, double fu, double du, double v, double fv) {
 //	#define QUARD_MINIMIZER(qm, u, fu, du, v, fv) \
-	    a = (v) - (u); 
-	    (qm) = (u) + (du) / (((fu) - (fv)) / a + (du)) / 2 * a;
+	    double a = (v) - (u); 
+	    double qm = (u) + (du) / (((fu) - (fv)) / a + (du)) / 2 * a;
+	    return qm;
 	}
 
 	/**
@@ -1649,9 +1628,10 @@ public class MyQN {
 	 *  @param  dv      The value of f'(v).
 	 */
 //	#define QUARD_MINIMIZER2(qm, u, du, v, dv) \
-	static double QUARD_MINIMIZER2(u, du, v, dv) {
-	    a = (u) - (v); 
-	    (qm) = (v) + (dv) / ((dv) - (du)) * a;
+	static double QUARD_MINIMIZER2(double u, double du, double v, double dv) {
+	    double a = (u) - (v); 
+	    double qm = (v) + (dv) / ((dv) - (du)) * a;
+	    return qm;
 	}
 
 	/**
@@ -1865,7 +1845,7 @@ public class MyQN {
 	    double norm = 0.;
 
 	    for (i = start;i < n;++i) {
-	        norm += fabs(x[i]);
+	        norm += Math.abs(x[i]);
 	    }
 
 	    return norm;
