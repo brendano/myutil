@@ -1,7 +1,7 @@
+package util;
 import com.google.common.collect.*;
 import java.util.*;
 
-import util.Arr;
 
 /**
  * a port of liblbfgs to java
@@ -226,7 +226,7 @@ import util.Arr;
 	- <a href="http://cctbx.sourceforge.net/">Computational Crystallography Toolbox</a> includes
 	  <a href="http://cctbx.sourceforge.net/current_cvs/c_plus_plus/namespacescitbx_1_1lbfgs.html">scitbx::lbfgs</a>.
 */
-public class MyQN {
+public class LBFGS {
 	/*
 	 *      C library of Limited memory BFGS (L-BFGS).
 	 *
