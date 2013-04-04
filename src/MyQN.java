@@ -722,6 +722,33 @@ public class MyQN {
 		public OptResult(ReturnStatus s) { status=s; }
 	}
 	
+
+// TODO need to port these too, vector operations and stuff.  like Arr math.
+//	/* No CPU specific optimization. */
+//	#include "arithmetic_ansi.h"
+
+//	#define min2(a, b)      ((a) <= (b) ? (a) : (b))
+//	#define max2(a, b)      ((a) >= (b) ? (a) : (b))
+//	#define max3(a, b, c)   max2(max2((a), (b)), (c));
+	static double max3(double a, double b, double c) { return Math.max(Math.max(a,b), c); }
+
+//	struct tag_callback_data {
+//	    int n;
+//	    void *instance;
+//	    lbfgs_evaluate_t proc_evaluate;
+//	    lbfgs_progress_t proc_progress;
+//	};
+//	typedef struct tag_callback_data callback_data_t;
+
+	static class iteration_data_t {
+	    double alpha;
+	    double[] s;     /* [n] */
+	    double[] y;     /* [n] */
+	    double ys;     /* vecdot(y, s) */
+	}
+//	typedef struct tag_iteration_data iteration_data_t;
+
+
 	/**
 	 * Start a L-BFGS optimization.
 	 *
@@ -766,215 +793,24 @@ public class MyQN {
 	    Params param)
 	{
 		int n = x.length;
-		return new OptResult(ReturnStatus.LBFGS_SUCCESS);
-	}
+//		return new OptResult(ReturnStatus.LBFGS_SUCCESS);
 
-	
-	/*
-	This library is a C port of the FORTRAN implementation of Limited-memory
-	Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) method written by Jorge Nocedal.
-	The original FORTRAN source code is available at:
-	http://www.ece.northwestern.edu/~nocedal/lbfgs.html
-
-	The L-BFGS algorithm is described in:
-	    - Jorge Nocedal.
-	      Updating Quasi-Newton Matrices with Limited Storage.
-	      <i>Mathematics of Computation</i>, Vol. 35, No. 151, pp. 773--782, 1980.
-	    - Dong C. Liu and Jorge Nocedal.
-	      On the limited memory BFGS method for large scale optimization.
-	      <i>Mathematical Programming</i> B, Vol. 45, No. 3, pp. 503-528, 1989.
-
-	The line search algorithms used in this implementation are described in:
-	    - John E. Dennis and Robert B. Schnabel.
-	      <i>Numerical Methods for Unconstrained Optimization and Nonlinear
-	      Equations</i>, Englewood Cliffs, 1983.
-	    - Jorge J. More and David J. Thuente.
-	      Line search algorithm with guaranteed sufficient decrease.
-	      <i>ACM Transactions on Mathematical Software (TOMS)</i>, Vol. 20, No. 3,
-	      pp. 286-307, 1994.
-
-	This library also implements Orthant-Wise Limited-memory Quasi-Newton (OWL-QN)
-	method presented in:
-	    - Galen Andrew and Jianfeng Gao.
-	      Scalable training of L1-regularized log-linear models.
-	      In <i>Proceedings of the 24th International Conference on Machine
-	      Learning (ICML 2007)</i>, pp. 33-40, 2007.
-
-	I would like to thank the original author, Jorge Nocedal, who has been
-	distributing the effieicnt and explanatory implementation in an open source
-	licence.
-	*/
-
-//	#if     defined(USE_SSE) && defined(__SSE2__) && LBFGS_FLOAT == 64
-//	/* Use SSE2 optimization for 64bit double precision. */
-//	#include "arithmetic_sse_double.h"
-//
-//	#elif   defined(USE_SSE) && defined(__SSE__) && LBFGS_FLOAT == 32
-//	/* Use SSE optimization for 32bit float precision. */
-//	#include "arithmetic_sse_float.h"
-//
-//	#else
-//	/* No CPU specific optimization. */
-//	#include "arithmetic_ansi.h"
-
-//	#endif
-
-	
-//	#define min2(a, b)      ((a) <= (b) ? (a) : (b))
-//	#define max2(a, b)      ((a) >= (b) ? (a) : (b))
-//	#define max3(a, b, c)   max2(max2((a), (b)), (c));
-	static void max3(double a, double b, double c) { return Math.max(Math.max(a,b), c); }
-
-//	struct tag_callback_data {
-//	    int n;
-//	    void *instance;
-//	    lbfgs_evaluate_t proc_evaluate;
-//	    lbfgs_progress_t proc_progress;
-//	};
-//	typedef struct tag_callback_data callback_data_t;
-
-	static class iteration_data_t {
-	    double alpha;
-	    double[] s;     /* [n] */
-	    double[] y;     /* [n] */
-	    double ys;     /* vecdot(y, s) */
-	}
-//	typedef struct tag_iteration_data iteration_data_t;
-
-	/* Forward function declarations. */
-
-//	typedef int (*line_search_proc)(
-//	    int n,
-//	    lbfgsfloatval_t *x,
-//	    lbfgsfloatval_t *f,
-//	    lbfgsfloatval_t *g,
-//	    lbfgsfloatval_t *s,
-//	    lbfgsfloatval_t *stp,
-//	    const lbfgsfloatval_t* xp,
-//	    const lbfgsfloatval_t* gp,
-//	    lbfgsfloatval_t *wa,
-//	    callback_data_t *cd,
-//	    const lbfgs_parameter_t *param
-//	    );
-//	    
-//	static int line_search_backtracking(
-//	    int n,
-//	    lbfgsfloatval_t *x,
-//	    lbfgsfloatval_t *f,
-//	    lbfgsfloatval_t *g,
-//	    lbfgsfloatval_t *s,
-//	    lbfgsfloatval_t *stp,
-//	    const lbfgsfloatval_t* xp,
-//	    const lbfgsfloatval_t* gp,
-//	    lbfgsfloatval_t *wa,
-//	    callback_data_t *cd,
-//	    const lbfgs_parameter_t *param
-//	    );
-//
-//	static int line_search_backtracking_owlqn(
-//	    int n,
-//	    lbfgsfloatval_t *x,
-//	    lbfgsfloatval_t *f,
-//	    lbfgsfloatval_t *g,
-//	    lbfgsfloatval_t *s,
-//	    lbfgsfloatval_t *stp,
-//	    const lbfgsfloatval_t* xp,
-//	    const lbfgsfloatval_t* gp,
-//	    lbfgsfloatval_t *wp,
-//	    callback_data_t *cd,
-//	    const lbfgs_parameter_t *param
-//	    );
-//
-//	static int line_search_morethuente(
-//	    int n,
-//	    lbfgsfloatval_t *x,
-//	    lbfgsfloatval_t *f,
-//	    lbfgsfloatval_t *g,
-//	    lbfgsfloatval_t *s,
-//	    lbfgsfloatval_t *stp,
-//	    const lbfgsfloatval_t* xp,
-//	    const lbfgsfloatval_t* gp,
-//	    lbfgsfloatval_t *wa,
-//	    callback_data_t *cd,
-//	    const lbfgs_parameter_t *param
-//	    );
-//
-//	static int update_trial_interval(
-//	    lbfgsfloatval_t *x,
-//	    lbfgsfloatval_t *fx,
-//	    lbfgsfloatval_t *dx,
-//	    lbfgsfloatval_t *y,
-//	    lbfgsfloatval_t *fy,
-//	    lbfgsfloatval_t *dy,
-//	    lbfgsfloatval_t *t,
-//	    lbfgsfloatval_t *ft,
-//	    lbfgsfloatval_t *dt,
-//	    const lbfgsfloatval_t tmin,
-//	    const lbfgsfloatval_t tmax,
-//	    int *brackt
-//	    );
-//
-//	static lbfgsfloatval_t owlqn_x1norm(
-//	    const lbfgsfloatval_t* x,
-//	    const int start,
-//	    const int n
-//	    );
-//
-//	static void owlqn_pseudo_gradient(
-//	    lbfgsfloatval_t* pg,
-//	    const lbfgsfloatval_t* x,
-//	    const lbfgsfloatval_t* g,
-//	    const int n,
-//	    const lbfgsfloatval_t c,
-//	    const int start,
-//	    const int end
-//	    );
-//
-//	static void owlqn_project(
-//	    lbfgsfloatval_t* d,
-//	    const lbfgsfloatval_t* sign,
-//	    const int start,
-//	    const int end
-//	    );
-
-
-//	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
-//	static int round_out_variables(int n)
-//	{
-//	    n += 7;
-//	    n /= 8;
-//	    n *= 8;
-//	    return n;
-//	}
-//	#endif/*defined(USE_SSE)*/
-
-	
-	int lbfgs(
-	    int n,
-	    lbfgsfloatval_t *x,
-	    lbfgsfloatval_t *ptr_fx,
-	    lbfgs_evaluate_t proc_evaluate,
-	    lbfgs_progress_t proc_progress,
-	    void *instance,
-	    lbfgs_parameter_t *_param
-	    )
-	{
-	    int ret;
+		int ret;
 	    int i, j, k, ls, end, bound;
 	    lbfgsfloatval_t step;
 
 	    /* Constant parameters and their default values. */
 	    lbfgs_parameter_t param = (_param != NULL) ? (*_param) : _defparam;
-	    const int m = param.m;
+	    final int m = param.m;
 
-	    lbfgsfloatval_t *xp = NULL;
-	    lbfgsfloatval_t *g = NULL, *gp = NULL, *pg = NULL;
-	    lbfgsfloatval_t *d = NULL, *w = NULL, *pf = NULL;
-	    iteration_data_t *lm = NULL, *it = NULL;
-	    lbfgsfloatval_t ys, yy;
-	    lbfgsfloatval_t xnorm, gnorm, beta;
-	    lbfgsfloatval_t fx = 0.;
-	    lbfgsfloatval_t rate = 0.;
+	    double[] xp;
+	    double g[] , gp[] , pg[];
+	    double d[], w[], pf[];
+	    iteration_data_t lm, it;
+	    double ys, yy;
+	    double xnorm, gnorm, beta;
+	    double fx = 0;
+	    double rate = 0;
 	    line_search_proc linesearch = line_search_morethuente;
 
 	    /* Construct a callback data. */
@@ -984,23 +820,23 @@ public class MyQN {
 	    cd.proc_evaluate = proc_evaluate;
 	    cd.proc_progress = proc_progress;
 
-	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
-	    /* Round out the number of variables. */
-	    n = round_out_variables(n);
-	#endif/*defined(USE_SSE)*/
+//	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
+//	    /* Round out the number of variables. */
+//	    n = round_out_variables(n);
+//	#endif/*defined(USE_SSE)*/
 
 	    /* Check the input parameters for errors. */
 	    if (n <= 0) {
 	        return LBFGSERR_INVALID_N;
 	    }
-	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
-	    if (n % 8 != 0) {
-	        return LBFGSERR_INVALID_N_SSE;
-	    }
-	    if ((uintptr_t)(const void*)x % 16 != 0) {
-	        return LBFGSERR_INVALID_X_SSE;
-	    }
-	#endif/*defined(USE_SSE)*/
+//	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
+//	    if (n % 8 != 0) {
+//	        return LBFGSERR_INVALID_N_SSE;
+//	    }
+//	    if ((uintptr_t)(const void*)x % 16 != 0) {
+//	        return LBFGSERR_INVALID_X_SSE;
+//	    }
+//	#endif/*defined(USE_SSE)*/
 	    if (param.epsilon < 0.) {
 	        return LBFGSERR_INVALID_EPSILON;
 	    }
@@ -1351,22 +1187,22 @@ public class MyQN {
 
 	static int line_search_backtracking(
 	    int n,
-	    lbfgsfloatval_t *x,
-	    lbfgsfloatval_t *f,
-	    lbfgsfloatval_t *g,
-	    lbfgsfloatval_t *s,
-	    lbfgsfloatval_t *stp,
-	    const lbfgsfloatval_t* xp,
-	    const lbfgsfloatval_t* gp,
-	    lbfgsfloatval_t *wp,
-	    callback_data_t *cd,
-	    const lbfgs_parameter_t *param
+	    double[] x,
+	    double[] f,
+	    double[] g,
+	    double[] s,
+	    double[] stp, // BTO: um i think this is supposed to be a singleton
+	    final double[]  xp,
+	    final double[]  gp,
+	    double[] wp,
+	    callback_data_t cd,
+	    Params param
 	    )
 	{
 	    int count = 0;
-	    lbfgsfloatval_t width, dg;
-	    lbfgsfloatval_t finit, dginit = 0., dgtest;
-	    const lbfgsfloatval_t dec = 0.5, inc = 2.1;
+	    double width, dg;
+	    double finit, dginit = 0., dgtest;
+	    final double dec = 0.5, inc = 2.1;
 
 	    /* Check the input parameters for errors. */
 	    if (*stp <= 0.) {
@@ -1444,16 +1280,16 @@ public class MyQN {
 
 	static int line_search_backtracking_owlqn(
 	    int n,
-	    lbfgsfloatval_t *x,
-	    lbfgsfloatval_t *f,
-	    lbfgsfloatval_t *g,
-	    lbfgsfloatval_t *s,
-	    lbfgsfloatval_t *stp,
-	    const lbfgsfloatval_t* xp,
-	    const lbfgsfloatval_t* gp,
-	    lbfgsfloatval_t *wp,
-	    callback_data_t *cd,
-	    const lbfgs_parameter_t *param
+	    double[] x,
+	    double[] f,
+	    double[] g,
+	    double[] s,
+	    double[] stp,
+	    final double[] xp,
+	    final double[] gp,
+	    double[] wp,
+	    callback_data_t cd,
+	    Params param
 	    )
 	{
 	    int i, count = 0;
@@ -1518,16 +1354,16 @@ public class MyQN {
 
 	static int line_search_morethuente(
 	    int n,
-	    lbfgsfloatval_t *x,
-	    lbfgsfloatval_t *f,
-	    lbfgsfloatval_t *g,
-	    lbfgsfloatval_t *s,
-	    lbfgsfloatval_t *stp,
-	    const lbfgsfloatval_t* xp,
-	    const lbfgsfloatval_t* gp,
-	    lbfgsfloatval_t *wa,
-	    callback_data_t *cd,
-	    const lbfgs_parameter_t *param
+	    double[] x,
+	    double[] f,
+	    double[] g,
+	    double[] s,
+	    double[] stp,
+	    final double[] xp,
+	    final double[] gp,
+	    double[] wa,
+	    callback_data_t cd,
+	    Params param
 	    )
 	{
 	    int count = 0;
@@ -1712,12 +1548,12 @@ public class MyQN {
 	/**
 	 * Define the local variables for computing minimizers.
 	 */
-	#define USES_MINIMIZER \
-	    lbfgsfloatval_t a, d, gamma, theta, p, q, r, s;
+//	#define USES_MINIMIZER \
+//	    lbfgsfloatval_t a, d, gamma, theta, p, q, r, s;
 
 	/**
 	 * Find a minimizer of an interpolated cubic function.
-	 *  @param  cm      The minimizer of the interpolated cubic.
+	 *  @param  cm      The minimizer of the interpolated cubic.   BTO REMOVED, return instead
 	 *  @param  u       The value of one point, u.
 	 *  @param  fu      The value of f(u).
 	 *  @param  du      The value of f'(u).
@@ -1725,21 +1561,24 @@ public class MyQN {
 	 *  @param  fv      The value of f(v).
 	 *  @param  du      The value of f'(v).
 	 */
-	#define CUBIC_MINIMIZER(cm, u, fu, du, v, fv, dv) \
-	    d = (v) - (u); \
-	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-	    p = fabs(theta); \
-	    q = fabs(du); \
-	    r = fabs(dv); \
-	    s = max3(p, q, r); \
-	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
-	    a = theta / s; \
-	    gamma = s * sqrt(a * a - ((du) / s) * ((dv) / s)); \
-	    if ((v) < (u)) gamma = -gamma; \
-	    p = gamma - (du) + theta; \
-	    q = gamma - (du) + gamma + (dv); \
-	    r = p / q; \
-	    (cm) = (u) + r * d;
+	static double CUBIC_MINIMIZER(double u, double fu, double du, double v, double fv, double dv) {
+//	#define CUBIC_MINIMIZER(cm, u, fu, du, v, fv, dv) \
+//	    d = (v) - (u); \
+//	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
+//	    p = fabs(theta); \
+//	    q = fabs(du); \
+//	    r = fabs(dv); \
+//	    s = max3(p, q, r); \
+//	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
+//	    a = theta / s; \
+//	    gamma = s * sqrt(a * a - ((du) / s) * ((dv) / s)); \
+//	    if ((v) < (u)) gamma = -gamma; \
+//	    p = gamma - (du) + theta; \
+//	    q = gamma - (du) + gamma + (dv); \
+//	    r = p / q; \
+		double cm = (u) + r * d;
+	    return cm;
+	}
 
 	/**
 	 * Find a minimizer of an interpolated cubic function.
@@ -1753,27 +1592,32 @@ public class MyQN {
 	 *  @param  xmin    The maximum value.
 	 *  @param  xmin    The minimum value.
 	 */
-	#define CUBIC_MINIMIZER2(cm, u, fu, du, v, fv, dv, xmin, xmax) \
-	    d = (v) - (u); \
-	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
-	    p = fabs(theta); \
-	    q = fabs(du); \
-	    r = fabs(dv); \
-	    s = max3(p, q, r); \
-	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
-	    a = theta / s; \
-	    gamma = s * sqrt(max2(0, a * a - ((du) / s) * ((dv) / s))); \
-	    if ((u) < (v)) gamma = -gamma; \
-	    p = gamma - (dv) + theta; \
-	    q = gamma - (dv) + gamma + (du); \
-	    r = p / q; \
-	    if (r < 0. && gamma != 0.) { \
-	        (cm) = (v) - r * d; \
-	    } else if (a < 0) { \
-	        (cm) = (xmax); \
-	    } else { \
-	        (cm) = (xmin); \
-	    }
+//	#define CUBIC_MINIMIZER2(cm, u, fu, du, v, fv, dv, xmin, xmax) \
+	static double CUBIC_MINIMIZER2(double u, double fu, double du, double v, 
+			double fv, double dv, double xmin, double xmax) {
+//	    d = (v) - (u); \
+//	    theta = ((fu) - (fv)) * 3 / d + (du) + (dv); \
+//	    p = fabs(theta); \
+//	    q = fabs(du); \
+//	    r = fabs(dv); \
+//	    s = max3(p, q, r); \
+//	    /* gamma = s*sqrt((theta/s)**2 - (du/s) * (dv/s)) */ \
+//	    a = theta / s; \
+//	    gamma = s * sqrt(max2(0, a * a - ((du) / s) * ((dv) / s))); \
+//	    if ((u) < (v)) gamma = -gamma; \
+//	    p = gamma - (dv) + theta; \
+//	    q = gamma - (dv) + gamma + (du); \
+//	    r = p / q; \
+	    double cm;
+//	    if (r < 0. && gamma != 0.) { \
+//	        (cm) = (v) - r * d; \
+//	    } else if (a < 0) { \
+//	        (cm) = (xmax); \
+//	    } else { \
+//	        (cm) = (xmin); \
+//	    }
+	    return cm;
+	}
 
 	/**
 	 * Find a minimizer of an interpolated quadratic function.
@@ -1784,9 +1628,11 @@ public class MyQN {
 	 *  @param  v       The value of another point, v.
 	 *  @param  fv      The value of f(v).
 	 */
-	#define QUARD_MINIMIZER(qm, u, fu, du, v, fv) \
-	    a = (v) - (u); \
+	static double QUARD_MINIMIZER(u, fu, du, v, fv) {
+//	#define QUARD_MINIMIZER(qm, u, fu, du, v, fv) \
+	    a = (v) - (u); 
 	    (qm) = (u) + (du) / (((fu) - (fv)) / a + (du)) / 2 * a;
+	}
 
 	/**
 	 * Find a minimizer of an interpolated quadratic function.
@@ -1796,9 +1642,11 @@ public class MyQN {
 	 *  @param  v       The value of another point, v.
 	 *  @param  dv      The value of f'(v).
 	 */
-	#define QUARD_MINIMIZER2(qm, u, du, v, dv) \
-	    a = (u) - (v); \
+//	#define QUARD_MINIMIZER2(qm, u, du, v, dv) \
+	static double QUARD_MINIMIZER2(u, du, v, dv) {
+	    a = (u) - (v); 
 	    (qm) = (v) + (dv) / ((dv) - (du)) * a;
+	}
 
 	/**
 	 * Update a safeguarded trial value and interval for line search.
@@ -1830,18 +1678,18 @@ public class MyQN {
 	 *      Software (TOMS), Vol 20, No 3, pp. 286-307, 1994.
 	 */
 	static int update_trial_interval(
-	    lbfgsfloatval_t *x,
-	    lbfgsfloatval_t *fx,
-	    lbfgsfloatval_t *dx,
-	    lbfgsfloatval_t *y,
-	    lbfgsfloatval_t *fy,
-	    lbfgsfloatval_t *dy,
-	    lbfgsfloatval_t *t,
-	    lbfgsfloatval_t *ft,
-	    lbfgsfloatval_t *dt,
-	    const lbfgsfloatval_t tmin,
-	    const lbfgsfloatval_t tmax,
-	    int *brackt
+	    double[] x,
+	    double[] fx,
+	    double[] dx,
+	    double[] y,
+	    double[] fy,
+	    double[] dy,
+	    double[] t,
+	    double[] ft,
+	    double[] dt,
+	    final double tmin,
+	    final double tmax,
+	    int[] brackt
 	    )
 	{
 	    int bound;
@@ -1849,7 +1697,6 @@ public class MyQN {
 	    lbfgsfloatval_t mc; /* minimizer of an interpolated cubic. */
 	    lbfgsfloatval_t mq; /* minimizer of an interpolated quadratic. */
 	    lbfgsfloatval_t newt;   /* new trial value. */
-	    USES_MINIMIZER;     /* for CUBIC_MINIMIZER and QUARD_MINIMIZER. */
 
 	    /* Check the input parameters for errors. */
 	    if (*brackt) {
@@ -2002,14 +1849,14 @@ public class MyQN {
 
 
 
-	static lbfgsfloatval_t owlqn_x1norm(
-	    const lbfgsfloatval_t* x,
-	    const int start,
-	    const int n
+	static double owlqn_x1norm(
+	    final double[] x,
+	    final int start,
+	    final int n
 	    )
 	{
 	    int i;
-	    lbfgsfloatval_t norm = 0.;
+	    double norm = 0.;
 
 	    for (i = start;i < n;++i) {
 	        norm += fabs(x[i]);
@@ -2019,13 +1866,13 @@ public class MyQN {
 	}
 
 	static void owlqn_pseudo_gradient(
-	    lbfgsfloatval_t* pg,
-	    const lbfgsfloatval_t* x,
-	    const lbfgsfloatval_t* g,
-	    const int n,
-	    const lbfgsfloatval_t c,
-	    const int start,
-	    const int end
+	    double[] pg,
+	    final double[] x,
+	    final double[] g,
+	    final int n,
+	    final double c,
+	    final int start,
+	    final int end
 	    )
 	{
 	    int i;
@@ -2062,10 +1909,10 @@ public class MyQN {
 	}
 
 	static void owlqn_project(
-	    lbfgsfloatval_t* d,
-	    const lbfgsfloatval_t* sign,
-	    const int start,
-	    const int end
+			double[] d,
+	    final double[] sign,
+	    final int start,
+	    final int end
 	    )
 	{
 	    int i;
