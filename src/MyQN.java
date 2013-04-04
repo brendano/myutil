@@ -1,6 +1,8 @@
 import com.google.common.collect.*;
 import java.util.*;
 
+import util.Arr;
+
 /**
  * a port of liblbfgs to java
  * http://www.chokkan.org/software/liblbfgs/
@@ -410,7 +412,7 @@ public class MyQN {
 	};
 	
 	static interface line_search_proc {
-		public int go(
+		public Status go(
 			    int n,
 			    double[] x,
 			    double[] f,
@@ -420,7 +422,7 @@ public class MyQN {
 			    final double[] xp,
 			    final double[] gp,
 			    double[] wa,
-			    Function evaluate, ProgressCallback progress,
+			    callback_data_t cd,
 			    Params param
 		);
 	}
@@ -645,7 +647,7 @@ public class MyQN {
 	 */
 	static interface Function {
 		/** receive x. fill in g. return objective. */
-		public double evaluate(final double[] x, double[] g, double step);
+		public double evaluate(final double[] x, double[] g, int n, double step);
 	}
 //	typedef lbfgsfloatval_t (*lbfgs_evaluate_t)(
 //	    void *instance,
@@ -755,13 +757,11 @@ public class MyQN {
 //	#define max3(a, b, c)   max2(max2((a), (b)), (c));
 	static double max3(double a, double b, double c) { return Math.max(Math.max(a,b), c); }
 
-//	struct tag_callback_data {
-//	    int n;
-//	    void *instance;
-//	    lbfgs_evaluate_t proc_evaluate;
-//	    lbfgs_progress_t proc_progress;
-//	};
-//	typedef struct tag_callback_data callback_data_t;
+	static class callback_data_t {
+	    int n;
+	    Function proc_evaluate;
+	    ProgressCallback proc_progress;
+	}
 
 	static class iteration_data_t {
 	    double alpha;
@@ -835,8 +835,8 @@ public class MyQN {
 	    double xnorm, gnorm, beta;
 	    double fx = 0;
 	    double rate = 0;
-	    line_search_proc linesearch = new line_search_morethuente();
-//	    line_search_proc linesearch = new line_search_backtracking(); // BTO added for testing
+//	    line_search_proc linesearch = new line_search_morethuente();
+	    line_search_proc linesearch = new line_search_backtracking(); // BTO added for testing
 
 	    /* Check the input parameters for errors. */
 	    if (n <= 0) {
@@ -1158,11 +1158,20 @@ public class MyQN {
 	    return ret;
 	}
 
+	static double vecdot(double[] a, double[] b, int n) {
+		return Arr.innerProduct(a, b);
+	}
+	static void veccpy(double[] y, double[] x, int n) {
+		// TODO
+	}
+	static void vecadd(double[] y, double[] x, double c, int n) {
+		// TODO
+	}
 
 
 	static class line_search_backtracking implements line_search_proc {
 	
-	public int go(
+	public Status go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1172,7 +1181,7 @@ public class MyQN {
 	    final double[]  xp,
 	    final double[]  gp,
 	    double[] wp,
-	    Function evaluator, ProgressCallback progress,
+	    callback_data_t cd,
 	    Params param
 	    )
 	{
@@ -1182,74 +1191,78 @@ public class MyQN {
 	    final double dec = 0.5, inc = 2.1;
 
 	    /* Check the input parameters for errors. */
-	    if (*stp <= 0.) {
-	        return LBFGSERR_INVALIDPARAMETERS;
+	    if (stp[0] <= 0.) {
+	        return Status.LBFGSERR_INVALIDPARAMETERS;
 	    }
 
 	    /* Compute the initial gradient in the search direction. */
-	    vecdot(&dginit, g, s, n);
+	    dginit = vecdot(g, s, n);
 
 	    /* Make sure that s points to a descent direction. */
 	    if (0 < dginit) {
-	        return LBFGSERR_INCREASEGRADIENT;
+	        return Status.LBFGSERR_INCREASEGRADIENT;
 	    }
 
 	    /* The initial value of the objective function. */
-	    finit = *f;
-	    dgtest = param->ftol * dginit;
+	    finit = f[0];
+	    dgtest = param.ftol * dginit;
 
 	    for (;;) {
 	        veccpy(x, xp, n);
-	        vecadd(x, s, *stp, n);
+	        vecadd(x, s, stp[0], n);
 
 	        /* Evaluate the function and gradient values. */
-	        *f = cd->proc_evaluate(cd->instance, x, g, cd->n, *stp);
+	        f[0] = cd.proc_evaluate.evaluate(x, g, n, stp[0]);
 
 	        ++count;
 
-	        if (*f > finit + *stp * dgtest) {
+	        if (f[0] > finit + stp[0] * dgtest) {
 	            width = dec;
 	        } else {
 	            /* The sufficient decrease condition (Armijo condition). */
-	            if (param->linesearch == LBFGS_LINESEARCH_BACKTRACKING_ARMIJO) {
+	            if (param.linesearch == LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_ARMIJO) {
 	                /* Exit with the Armijo condition. */
-	                return count;
+//	                return count; 
+	            	return Status.LBFGS_SUCCESS; // BTO changed
+	            	
 		        }
 
 		        /* Check the Wolfe condition. */
-		        vecdot(&dg, g, s, n);
-		        if (dg < param->wolfe * dginit) {
+		        dg = vecdot(g, s, n);
+		        if (dg < param.wolfe * dginit) {
 	    		    width = inc;
 		        } else {
-			        if(param->linesearch == LBFGS_LINESEARCH_BACKTRACKING_WOLFE) {
+			        if(param.linesearch == LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_WOLFE) {
 			            /* Exit with the regular Wolfe condition. */
-			            return count;
+//			            return count;
+		            	return Status.LBFGS_SUCCESS; // BTO changed
 			        }
 
 			        /* Check the strong Wolfe condition. */
-			        if(dg > -param->wolfe * dginit) {
+			        if(dg > -param.wolfe * dginit) {
 			            width = dec;
 			        } else {
 			            /* Exit with the strong Wolfe condition. */
-			            return count;
+//			            return count;
+		            	return Status.LBFGS_SUCCESS; // BTO changed
 			        }
 	            }
 	        }
 
-	        if (*stp < param->min_step) {
+	        if (stp[0] < param.min_step) {
 	            /* The step is the minimum value. */
-	            return LBFGSERR_MINIMUMSTEP;
+	            return Status.LBFGSERR_MINIMUMSTEP;
 	        }
-	        if (*stp > param->max_step) {
+	        if (stp[0] > param.max_step) {
 	            /* The step is the maximum value. */
-	            return LBFGSERR_MAXIMUMSTEP;
+	            return Status.LBFGSERR_MAXIMUMSTEP;
 	        }
-	        if (param->max_linesearch <= count) {
+	        if (param.max_linesearch <= count) {
 	            /* Maximum number of iteration. */
-	            return LBFGSERR_MAXIMUMLINESEARCH;
+	            return Status.LBFGSERR_MAXIMUMLINESEARCH;
 	        }
 
-	        (*stp) *= width;
+	        stp[0] *= width;
 	    }
 	}
 	}
@@ -1258,7 +1271,7 @@ public class MyQN {
 
 	static class line_search_backtracking_owlqn implements line_search_proc { 
 	
-	public int go(
+	public Status go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1268,17 +1281,17 @@ public class MyQN {
 	    final double[] xp,
 	    final double[] gp,
 	    double[] wp,
-	    Function evaluate, ProgressCallback progress,
+	    callback_data_t cd,
 	    Params param
 	    )
 	{
 	    int i, count = 0;
-	    lbfgsfloatval_t width = 0.5, norm = 0.;
-	    lbfgsfloatval_t finit = *f, dgtest;
+	    double width = 0.5, norm = 0.;
+	    double finit = f[0], dgtest;
 
 	    /* Check the input parameters for errors. */
-	    if (*stp <= 0.) {
-	        return LBFGSERR_INVALIDPARAMETERS;
+	    if (stp[0] <= 0.) {
+	        return Status.LBFGSERR_INVALIDPARAMETERS;
 	    }
 
 	    /* Choose the orthant for the new point. */
@@ -1289,17 +1302,17 @@ public class MyQN {
 	    for (;;) {
 	        /* Update the current point. */
 	        veccpy(x, xp, n);
-	        vecadd(x, s, *stp, n);
+	        vecadd(x, s, stp[0], n);
 
 	        /* The current point is projected onto the orthant. */
-	        owlqn_project(x, wp, param->orthantwise_start, param->orthantwise_end);
+	        owlqn_project(x, wp, param.orthantwise_start, param.orthantwise_end);
 
 	        /* Evaluate the function and gradient values. */
-	        *f = cd->proc_evaluate(cd->instance, x, g, cd->n, *stp);
+	        f[0] = cd.proc_evaluate.evaluate(x, g, cd.n, stp[0]);
 
 	        /* Compute the L1 norm of the variables and add it to the object value. */
-	        norm = owlqn_x1norm(x, param->orthantwise_start, param->orthantwise_end);
-	        *f += norm * param->orthantwise_c;
+	        norm = owlqn_x1norm(x, param.orthantwise_start, param.orthantwise_end);
+	        f[0] += norm * param.orthantwise_c;
 
 	        ++count;
 
@@ -1308,224 +1321,227 @@ public class MyQN {
 	            dgtest += (x[i] - xp[i]) * gp[i];
 	        }
 
-	        if (*f <= finit + param->ftol * dgtest) {
+	        if (f[0] <= finit + param.ftol * dgtest) {
 	            /* The sufficient decrease condition. */
-	            return count;
+//	            return count;
+	        	return Status.LBFGS_SUCCESS; // BTO changed
 	        }
 
-	        if (*stp < param->min_step) {
+	        if (stp[0] < param.min_step) {
 	            /* The step is the minimum value. */
-	            return LBFGSERR_MINIMUMSTEP;
+	            return Status.LBFGSERR_MINIMUMSTEP;
 	        }
-	        if (*stp > param->max_step) {
+	        if (stp[0] > param.max_step) {
 	            /* The step is the maximum value. */
-	            return LBFGSERR_MAXIMUMSTEP;
+	            return Status.LBFGSERR_MAXIMUMSTEP;
 	        }
-	        if (param->max_linesearch <= count) {
+	        if (param.max_linesearch <= count) {
 	            /* Maximum number of iteration. */
-	            return LBFGSERR_MAXIMUMLINESEARCH;
+	            return Status.LBFGSERR_MAXIMUMLINESEARCH;
 	        }
 
-	        (*stp) *= width;
+	        stp[0] *= width;
 	    }
 	}
 	}
-
 
 
 	static class line_search_morethuente implements line_search_proc {
-	
-	public int go(
-	    int n,
-	    double[] x,
-	    double[] f,
-	    double[] g,
-	    double[] s,
-	    double[] stp,
-	    final double[] xp,
-	    final double[] gp,
-	    double[] wa,
-	    Function evaluator, ProgressCallback progress,
-	    Params param
-	    )
-	{
-	    int count = 0;
-	    int brackt, stage1, uinfo = 0;
-	    lbfgsfloatval_t dg;
-	    lbfgsfloatval_t stx, fx, dgx;
-	    lbfgsfloatval_t sty, fy, dgy;
-	    lbfgsfloatval_t fxm, dgxm, fym, dgym, fm, dgm;
-	    lbfgsfloatval_t finit, ftest1, dginit, dgtest;
-	    lbfgsfloatval_t width, prev_width;
-	    lbfgsfloatval_t stmin, stmax;
-
-	    /* Check the input parameters for errors. */
-	    if (*stp <= 0.) {
-	        return LBFGSERR_INVALIDPARAMETERS;
-	    }
-
-	    /* Compute the initial gradient in the search direction. */
-	    vecdot(&dginit, g, s, n);
-
-	    /* Make sure that s points to a descent direction. */
-	    if (0 < dginit) {
-	        return LBFGSERR_INCREASEGRADIENT;
-	    }
-
-	    /* Initialize local variables. */
-	    brackt = 0;
-	    stage1 = 1;
-	    finit = *f;
-	    dgtest = param->ftol * dginit;
-	    width = param->max_step - param->min_step;
-	    prev_width = 2.0 * width;
-
-	    /*
-	        The variables stx, fx, dgx contain the values of the step,
-	        function, and directional derivative at the best step.
-	        The variables sty, fy, dgy contain the value of the step,
-	        function, and derivative at the other endpoint of
-	        the interval of uncertainty.
-	        The variables stp, f, dg contain the values of the step,
-	        function, and derivative at the current step.
-	    */
-	    stx = sty = 0.;
-	    fx = fy = finit;
-	    dgx = dgy = dginit;
-
-	    for (;;) {
-	        /*
-	            Set the minimum and maximum steps to correspond to the
-	            present interval of uncertainty.
-	         */
-	        if (brackt) {
-	            stmin = min2(stx, sty);
-	            stmax = max2(stx, sty);
-	        } else {
-	            stmin = stx;
-	            stmax = *stp + 4.0 * (*stp - stx);
-	        }
-
-	        /* Clip the step in the range of [stpmin, stpmax]. */
-	        if (*stp < param->min_step) *stp = param->min_step;
-	        if (param->max_step < *stp) *stp = param->max_step;
-
-	        /*
-	            If an unusual termination is to occur then let
-	            stp be the lowest point obtained so far.
-	         */
-	        if ((brackt && ((*stp <= stmin || stmax <= *stp) || param->max_linesearch <= count + 1 || uinfo != 0)) || (brackt && (stmax - stmin <= param->xtol * stmax))) {
-	            *stp = stx;
-	        }
-
-	        /*
-	            Compute the current value of x:
-	                x <- x + (*stp) * s.
-	         */
-	        veccpy(x, xp, n);
-	        vecadd(x, s, *stp, n);
-
-	        /* Evaluate the function and gradient values. */
-	        *f = cd->proc_evaluate(cd->instance, x, g, cd->n, *stp);
-	        vecdot(&dg, g, s, n);
-
-	        ftest1 = finit + *stp * dgtest;
-	        ++count;
-
-	        /* Test for errors and convergence. */
-	        if (brackt && ((*stp <= stmin || stmax <= *stp) || uinfo != 0)) {
-	            /* Rounding errors prevent further progress. */
-	            return LBFGSERR_ROUNDING_ERROR;
-	        }
-	        if (*stp == param->max_step && *f <= ftest1 && dg <= dgtest) {
-	            /* The step is the maximum value. */
-	            return LBFGSERR_MAXIMUMSTEP;
-	        }
-	        if (*stp == param->min_step && (ftest1 < *f || dgtest <= dg)) {
-	            /* The step is the minimum value. */
-	            return LBFGSERR_MINIMUMSTEP;
-	        }
-	        if (brackt && (stmax - stmin) <= param->xtol * stmax) {
-	            /* Relative width of the interval of uncertainty is at most xtol. */
-	            return LBFGSERR_WIDTHTOOSMALL;
-	        }
-	        if (param->max_linesearch <= count) {
-	            /* Maximum number of iteration. */
-	            return LBFGSERR_MAXIMUMLINESEARCH;
-	        }
-	        if (*f <= ftest1 && fabs(dg) <= param->gtol * (-dginit)) {
-	            /* The sufficient decrease condition and the directional derivative condition hold. */
-	            return count;
-	        }
-
-	        /*
-	            In the first stage we seek a step for which the modified
-	            function has a nonpositive value and nonnegative derivative.
-	         */
-	        if (stage1 && *f <= ftest1 && min2(param->ftol, param->gtol) * dginit <= dg) {
-	            stage1 = 0;
-	        }
-
-	        /*
-	            A modified function is used to predict the step only if
-	            we have not obtained a step for which the modified
-	            function has a nonpositive function value and nonnegative
-	            derivative, and if a lower function value has been
-	            obtained but the decrease is not sufficient.
-	         */
-	        if (stage1 && ftest1 < *f && *f <= fx) {
-	            /* Define the modified function and derivative values. */
-	            fm = *f - *stp * dgtest;
-	            fxm = fx - stx * dgtest;
-	            fym = fy - sty * dgtest;
-	            dgm = dg - dgtest;
-	            dgxm = dgx - dgtest;
-	            dgym = dgy - dgtest;
-
-	            /*
-	                Call update_trial_interval() to update the interval of
-	                uncertainty and to compute the new step.
-	             */
-	            uinfo = update_trial_interval(
-	                &stx, &fxm, &dgxm,
-	                &sty, &fym, &dgym,
-	                stp, &fm, &dgm,
-	                stmin, stmax, &brackt
-	                );
-
-	            /* Reset the function and gradient values for f. */
-	            fx = fxm + stx * dgtest;
-	            fy = fym + sty * dgtest;
-	            dgx = dgxm + dgtest;
-	            dgy = dgym + dgtest;
-	        } else {
-	            /*
-	                Call update_trial_interval() to update the interval of
-	                uncertainty and to compute the new step.
-	             */
-	            uinfo = update_trial_interval(
-	                &stx, &fx, &dgx,
-	                &sty, &fy, &dgy,
-	                stp, f, &dg,
-	                stmin, stmax, &brackt
-	                );
-	        }
-
-	        /*
-	            Force a sufficient decrease in the interval of uncertainty.
-	         */
-	        if (brackt) {
-	            if (0.66 * prev_width <= fabs(sty - stx)) {
-	                *stp = stx + 0.5 * (sty - stx);
-	            }
-	            prev_width = width;
-	            width = fabs(sty - stx);
-	        }
-	    }
-
-	    return LBFGSERR_LOGICERROR;
 	}
-	}
+
+//	static class line_search_morethuente implements line_search_proc {
+//	
+//	public int go(
+//	    int n,
+//	    double[] x,
+//	    double[] f,
+//	    double[] g,
+//	    double[] s,
+//	    double[] stp,
+//	    final double[] xp,
+//	    final double[] gp,
+//	    double[] wa,
+//	    Function evaluator, ProgressCallback progress,
+//	    Params param
+//	    )
+//	{
+//	    int count = 0;
+//	    int brackt, stage1, uinfo = 0;
+//	    lbfgsfloatval_t dg;
+//	    lbfgsfloatval_t stx, fx, dgx;
+//	    lbfgsfloatval_t sty, fy, dgy;
+//	    lbfgsfloatval_t fxm, dgxm, fym, dgym, fm, dgm;
+//	    lbfgsfloatval_t finit, ftest1, dginit, dgtest;
+//	    lbfgsfloatval_t width, prev_width;
+//	    lbfgsfloatval_t stmin, stmax;
+//
+//	    /* Check the input parameters for errors. */
+//	    if (*stp <= 0.) {
+//	        return LBFGSERR_INVALIDPARAMETERS;
+//	    }
+//
+//	    /* Compute the initial gradient in the search direction. */
+//	    vecdot(&dginit, g, s, n);
+//
+//	    /* Make sure that s points to a descent direction. */
+//	    if (0 < dginit) {
+//	        return LBFGSERR_INCREASEGRADIENT;
+//	    }
+//
+//	    /* Initialize local variables. */
+//	    brackt = 0;
+//	    stage1 = 1;
+//	    finit = *f;
+//	    dgtest = param->ftol * dginit;
+//	    width = param->max_step - param->min_step;
+//	    prev_width = 2.0 * width;
+//
+//	    /*
+//	        The variables stx, fx, dgx contain the values of the step,
+//	        function, and directional derivative at the best step.
+//	        The variables sty, fy, dgy contain the value of the step,
+//	        function, and derivative at the other endpoint of
+//	        the interval of uncertainty.
+//	        The variables stp, f, dg contain the values of the step,
+//	        function, and derivative at the current step.
+//	    */
+//	    stx = sty = 0.;
+//	    fx = fy = finit;
+//	    dgx = dgy = dginit;
+//
+//	    for (;;) {
+//	        /*
+//	            Set the minimum and maximum steps to correspond to the
+//	            present interval of uncertainty.
+//	         */
+//	        if (brackt) {
+//	            stmin = min2(stx, sty);
+//	            stmax = max2(stx, sty);
+//	        } else {
+//	            stmin = stx;
+//	            stmax = *stp + 4.0 * (*stp - stx);
+//	        }
+//
+//	        /* Clip the step in the range of [stpmin, stpmax]. */
+//	        if (*stp < param->min_step) *stp = param->min_step;
+//	        if (param->max_step < *stp) *stp = param->max_step;
+//
+//	        /*
+//	            If an unusual termination is to occur then let
+//	            stp be the lowest point obtained so far.
+//	         */
+//	        if ((brackt && ((*stp <= stmin || stmax <= *stp) || param->max_linesearch <= count + 1 || uinfo != 0)) || (brackt && (stmax - stmin <= param->xtol * stmax))) {
+//	            *stp = stx;
+//	        }
+//
+//	        /*
+//	            Compute the current value of x:
+//	                x <- x + (*stp) * s.
+//	         */
+//	        veccpy(x, xp, n);
+//	        vecadd(x, s, *stp, n);
+//
+//	        /* Evaluate the function and gradient values. */
+//	        *f = cd->proc_evaluate(cd->instance, x, g, cd->n, *stp);
+//	        vecdot(&dg, g, s, n);
+//
+//	        ftest1 = finit + *stp * dgtest;
+//	        ++count;
+//
+//	        /* Test for errors and convergence. */
+//	        if (brackt && ((*stp <= stmin || stmax <= *stp) || uinfo != 0)) {
+//	            /* Rounding errors prevent further progress. */
+//	            return LBFGSERR_ROUNDING_ERROR;
+//	        }
+//	        if (*stp == param->max_step && *f <= ftest1 && dg <= dgtest) {
+//	            /* The step is the maximum value. */
+//	            return LBFGSERR_MAXIMUMSTEP;
+//	        }
+//	        if (*stp == param->min_step && (ftest1 < *f || dgtest <= dg)) {
+//	            /* The step is the minimum value. */
+//	            return LBFGSERR_MINIMUMSTEP;
+//	        }
+//	        if (brackt && (stmax - stmin) <= param->xtol * stmax) {
+//	            /* Relative width of the interval of uncertainty is at most xtol. */
+//	            return LBFGSERR_WIDTHTOOSMALL;
+//	        }
+//	        if (param->max_linesearch <= count) {
+//	            /* Maximum number of iteration. */
+//	            return LBFGSERR_MAXIMUMLINESEARCH;
+//	        }
+//	        if (*f <= ftest1 && fabs(dg) <= param->gtol * (-dginit)) {
+//	            /* The sufficient decrease condition and the directional derivative condition hold. */
+//	            return count;
+//	        }
+//
+//	        /*
+//	            In the first stage we seek a step for which the modified
+//	            function has a nonpositive value and nonnegative derivative.
+//	         */
+//	        if (stage1 && *f <= ftest1 && min2(param->ftol, param->gtol) * dginit <= dg) {
+//	            stage1 = 0;
+//	        }
+//
+//	        /*
+//	            A modified function is used to predict the step only if
+//	            we have not obtained a step for which the modified
+//	            function has a nonpositive function value and nonnegative
+//	            derivative, and if a lower function value has been
+//	            obtained but the decrease is not sufficient.
+//	         */
+//	        if (stage1 && ftest1 < *f && *f <= fx) {
+//	            /* Define the modified function and derivative values. */
+//	            fm = *f - *stp * dgtest;
+//	            fxm = fx - stx * dgtest;
+//	            fym = fy - sty * dgtest;
+//	            dgm = dg - dgtest;
+//	            dgxm = dgx - dgtest;
+//	            dgym = dgy - dgtest;
+//
+//	            /*
+//	                Call update_trial_interval() to update the interval of
+//	                uncertainty and to compute the new step.
+//	             */
+//	            uinfo = update_trial_interval(
+//	                &stx, &fxm, &dgxm,
+//	                &sty, &fym, &dgym,
+//	                stp, &fm, &dgm,
+//	                stmin, stmax, &brackt
+//	                );
+//
+//	            /* Reset the function and gradient values for f. */
+//	            fx = fxm + stx * dgtest;
+//	            fy = fym + sty * dgtest;
+//	            dgx = dgxm + dgtest;
+//	            dgy = dgym + dgtest;
+//	        } else {
+//	            /*
+//	                Call update_trial_interval() to update the interval of
+//	                uncertainty and to compute the new step.
+//	             */
+//	            uinfo = update_trial_interval(
+//	                &stx, &fx, &dgx,
+//	                &sty, &fy, &dgy,
+//	                stp, f, &dg,
+//	                stmin, stmax, &brackt
+//	                );
+//	        }
+//
+//	        /*
+//	            Force a sufficient decrease in the interval of uncertainty.
+//	         */
+//	        if (brackt) {
+//	            if (0.66 * prev_width <= fabs(sty - stx)) {
+//	                *stp = stx + 0.5 * (sty - stx);
+//	            }
+//	            prev_width = width;
+//	            width = fabs(sty - stx);
+//	        }
+//	    }
+//
+//	    return LBFGSERR_LOGICERROR;
+//	}
+//	}
 
 
 
@@ -1663,173 +1679,173 @@ public class MyQN {
 	 *      guaranteed sufficient decrease. ACM Transactions on Mathematical
 	 *      Software (TOMS), Vol 20, No 3, pp. 286-307, 1994.
 	 */
-	static int update_trial_interval(
-	    double[] x,
-	    double[] fx,
-	    double[] dx,
-	    double[] y,
-	    double[] fy,
-	    double[] dy,
-	    double[] t,
-	    double[] ft,
-	    double[] dt,
-	    final double tmin,
-	    final double tmax,
-	    int[] brackt
-	    )
-	{
-	    int bound;
-	    int dsign = fsigndiff(dt, dx);
-	    lbfgsfloatval_t mc; /* minimizer of an interpolated cubic. */
-	    lbfgsfloatval_t mq; /* minimizer of an interpolated quadratic. */
-	    lbfgsfloatval_t newt;   /* new trial value. */
-
-	    /* Check the input parameters for errors. */
-	    if (*brackt) {
-	        if (*t <= min2(*x, *y) || max2(*x, *y) <= *t) {
-	            /* The trival value t is out of the interval. */
-	            return LBFGSERR_OUTOFINTERVAL;
-	        }
-	        if (0. <= *dx * (*t - *x)) {
-	            /* The function must decrease from x. */
-	            return LBFGSERR_INCREASEGRADIENT;
-	        }
-	        if (tmax < tmin) {
-	            /* Incorrect tmin and tmax specified. */
-	            return LBFGSERR_INCORRECT_TMINMAX;
-	        }
-	    }
-
-	    /*
-	        Trial value selection.
-	     */
-	    if (*fx < *ft) {
-	        /*
-	            Case 1: a higher function value.
-	            The minimum is brackt. If the cubic minimizer is closer
-	            to x than the quadratic one, the cubic one is taken, else
-	            the average of the minimizers is taken.
-	         */
-	        *brackt = 1;
-	        bound = 1;
-	        CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
-	        QUARD_MINIMIZER(mq, *x, *fx, *dx, *t, *ft);
-	        if (fabs(mc - *x) < fabs(mq - *x)) {
-	            newt = mc;
-	        } else {
-	            newt = mc + 0.5 * (mq - mc);
-	        }
-	    } else if (dsign) {
-	        /*
-	            Case 2: a lower function value and derivatives of
-	            opposite sign. The minimum is brackt. If the cubic
-	            minimizer is closer to x than the quadratic (secant) one,
-	            the cubic one is taken, else the quadratic one is taken.
-	         */
-	        *brackt = 1;
-	        bound = 0;
-	        CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
-	        QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
-	        if (fabs(mc - *t) > fabs(mq - *t)) {
-	            newt = mc;
-	        } else {
-	            newt = mq;
-	        }
-	    } else if (fabs(*dt) < fabs(*dx)) {
-	        /*
-	            Case 3: a lower function value, derivatives of the
-	            same sign, and the magnitude of the derivative decreases.
-	            The cubic minimizer is only used if the cubic tends to
-	            infinity in the direction of the minimizer or if the minimum
-	            of the cubic is beyond t. Otherwise the cubic minimizer is
-	            defined to be either tmin or tmax. The quadratic (secant)
-	            minimizer is also computed and if the minimum is brackt
-	            then the the minimizer closest to x is taken, else the one
-	            farthest away is taken.
-	         */
-	        bound = 1;
-	        CUBIC_MINIMIZER2(mc, *x, *fx, *dx, *t, *ft, *dt, tmin, tmax);
-	        QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
-	        if (*brackt) {
-	            if (fabs(*t - mc) < fabs(*t - mq)) {
-	                newt = mc;
-	            } else {
-	                newt = mq;
-	            }
-	        } else {
-	            if (fabs(*t - mc) > fabs(*t - mq)) {
-	                newt = mc;
-	            } else {
-	                newt = mq;
-	            }
-	        }
-	    } else {
-	        /*
-	            Case 4: a lower function value, derivatives of the
-	            same sign, and the magnitude of the derivative does
-	            not decrease. If the minimum is not brackt, the step
-	            is either tmin or tmax, else the cubic minimizer is taken.
-	         */
-	        bound = 0;
-	        if (*brackt) {
-	            CUBIC_MINIMIZER(newt, *t, *ft, *dt, *y, *fy, *dy);
-	        } else if (*x < *t) {
-	            newt = tmax;
-	        } else {
-	            newt = tmin;
-	        }
-	    }
-
-	    /*
-	        Update the interval of uncertainty. This update does not
-	        depend on the new step or the case analysis above.
-
-	        - Case a: if f(x) < f(t),
-	            x <- x, y <- t.
-	        - Case b: if f(t) <= f(x) && f'(t)*f'(x) > 0,
-	            x <- t, y <- y.
-	        - Case c: if f(t) <= f(x) && f'(t)*f'(x) < 0, 
-	            x <- t, y <- x.
-	     */
-	    if (*fx < *ft) {
-	        /* Case a */
-	        *y = *t;
-	        *fy = *ft;
-	        *dy = *dt;
-	    } else {
-	        /* Case c */
-	        if (dsign) {
-	            *y = *x;
-	            *fy = *fx;
-	            *dy = *dx;
-	        }
-	        /* Cases b and c */
-	        *x = *t;
-	        *fx = *ft;
-	        *dx = *dt;
-	    }
-
-	    /* Clip the new trial value in [tmin, tmax]. */
-	    if (tmax < newt) newt = tmax;
-	    if (newt < tmin) newt = tmin;
-
-	    /*
-	        Redefine the new trial value if it is close to the upper bound
-	        of the interval.
-	     */
-	    if (*brackt && bound) {
-	        mq = *x + 0.66 * (*y - *x);
-	        if (*x < *y) {
-	            if (mq < newt) newt = mq;
-	        } else {
-	            if (newt < mq) newt = mq;
-	        }
-	    }
-
-	    /* Return the new trial value. */
-	    *t = newt;
-	    return 0;
-	}
+//	static int update_trial_interval(
+//	    double[] x,
+//	    double[] fx,
+//	    double[] dx,
+//	    double[] y,
+//	    double[] fy,
+//	    double[] dy,
+//	    double[] t,
+//	    double[] ft,
+//	    double[] dt,
+//	    final double tmin,
+//	    final double tmax,
+//	    int[] brackt
+//	    )
+//	{
+//	    int bound;
+//	    int dsign = fsigndiff(dt, dx);
+//	    lbfgsfloatval_t mc; /* minimizer of an interpolated cubic. */
+//	    lbfgsfloatval_t mq; /* minimizer of an interpolated quadratic. */
+//	    lbfgsfloatval_t newt;   /* new trial value. */
+//
+//	    /* Check the input parameters for errors. */
+//	    if (*brackt) {
+//	        if (*t <= min2(*x, *y) || max2(*x, *y) <= *t) {
+//	            /* The trival value t is out of the interval. */
+//	            return LBFGSERR_OUTOFINTERVAL;
+//	        }
+//	        if (0. <= *dx * (*t - *x)) {
+//	            /* The function must decrease from x. */
+//	            return LBFGSERR_INCREASEGRADIENT;
+//	        }
+//	        if (tmax < tmin) {
+//	            /* Incorrect tmin and tmax specified. */
+//	            return LBFGSERR_INCORRECT_TMINMAX;
+//	        }
+//	    }
+//
+//	    /*
+//	        Trial value selection.
+//	     */
+//	    if (*fx < *ft) {
+//	        /*
+//	            Case 1: a higher function value.
+//	            The minimum is brackt. If the cubic minimizer is closer
+//	            to x than the quadratic one, the cubic one is taken, else
+//	            the average of the minimizers is taken.
+//	         */
+//	        *brackt = 1;
+//	        bound = 1;
+//	        CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
+//	        QUARD_MINIMIZER(mq, *x, *fx, *dx, *t, *ft);
+//	        if (fabs(mc - *x) < fabs(mq - *x)) {
+//	            newt = mc;
+//	        } else {
+//	            newt = mc + 0.5 * (mq - mc);
+//	        }
+//	    } else if (dsign) {
+//	        /*
+//	            Case 2: a lower function value and derivatives of
+//	            opposite sign. The minimum is brackt. If the cubic
+//	            minimizer is closer to x than the quadratic (secant) one,
+//	            the cubic one is taken, else the quadratic one is taken.
+//	         */
+//	        *brackt = 1;
+//	        bound = 0;
+//	        CUBIC_MINIMIZER(mc, *x, *fx, *dx, *t, *ft, *dt);
+//	        QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
+//	        if (fabs(mc - *t) > fabs(mq - *t)) {
+//	            newt = mc;
+//	        } else {
+//	            newt = mq;
+//	        }
+//	    } else if (fabs(*dt) < fabs(*dx)) {
+//	        /*
+//	            Case 3: a lower function value, derivatives of the
+//	            same sign, and the magnitude of the derivative decreases.
+//	            The cubic minimizer is only used if the cubic tends to
+//	            infinity in the direction of the minimizer or if the minimum
+//	            of the cubic is beyond t. Otherwise the cubic minimizer is
+//	            defined to be either tmin or tmax. The quadratic (secant)
+//	            minimizer is also computed and if the minimum is brackt
+//	            then the the minimizer closest to x is taken, else the one
+//	            farthest away is taken.
+//	         */
+//	        bound = 1;
+//	        CUBIC_MINIMIZER2(mc, *x, *fx, *dx, *t, *ft, *dt, tmin, tmax);
+//	        QUARD_MINIMIZER2(mq, *x, *dx, *t, *dt);
+//	        if (*brackt) {
+//	            if (fabs(*t - mc) < fabs(*t - mq)) {
+//	                newt = mc;
+//	            } else {
+//	                newt = mq;
+//	            }
+//	        } else {
+//	            if (fabs(*t - mc) > fabs(*t - mq)) {
+//	                newt = mc;
+//	            } else {
+//	                newt = mq;
+//	            }
+//	        }
+//	    } else {
+//	        /*
+//	            Case 4: a lower function value, derivatives of the
+//	            same sign, and the magnitude of the derivative does
+//	            not decrease. If the minimum is not brackt, the step
+//	            is either tmin or tmax, else the cubic minimizer is taken.
+//	         */
+//	        bound = 0;
+//	        if (*brackt) {
+//	            CUBIC_MINIMIZER(newt, *t, *ft, *dt, *y, *fy, *dy);
+//	        } else if (*x < *t) {
+//	            newt = tmax;
+//	        } else {
+//	            newt = tmin;
+//	        }
+//	    }
+//
+//	    /*
+//	        Update the interval of uncertainty. This update does not
+//	        depend on the new step or the case analysis above.
+//
+//	        - Case a: if f(x) < f(t),
+//	            x <- x, y <- t.
+//	        - Case b: if f(t) <= f(x) && f'(t)*f'(x) > 0,
+//	            x <- t, y <- y.
+//	        - Case c: if f(t) <= f(x) && f'(t)*f'(x) < 0, 
+//	            x <- t, y <- x.
+//	     */
+//	    if (*fx < *ft) {
+//	        /* Case a */
+//	        *y = *t;
+//	        *fy = *ft;
+//	        *dy = *dt;
+//	    } else {
+//	        /* Case c */
+//	        if (dsign) {
+//	            *y = *x;
+//	            *fy = *fx;
+//	            *dy = *dx;
+//	        }
+//	        /* Cases b and c */
+//	        *x = *t;
+//	        *fx = *ft;
+//	        *dx = *dt;
+//	    }
+//
+//	    /* Clip the new trial value in [tmin, tmax]. */
+//	    if (tmax < newt) newt = tmax;
+//	    if (newt < tmin) newt = tmin;
+//
+//	    /*
+//	        Redefine the new trial value if it is close to the upper bound
+//	        of the interval.
+//	     */
+//	    if (*brackt && bound) {
+//	        mq = *x + 0.66 * (*y - *x);
+//	        if (*x < *y) {
+//	            if (mq < newt) newt = mq;
+//	        } else {
+//	            if (newt < mq) newt = mq;
+//	        }
+//	    }
+//
+//	    /* Return the new trial value. */
+//	    *t = newt;
+//	    return 0;
+//	}
 
 
 
