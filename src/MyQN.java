@@ -365,6 +365,9 @@ public class MyQN {
 	    LBFGSERR_INCREASEGRADIENT;
 	    
 		public boolean hasConverged() { return this==LBFGS_SUCCESS || this==LBFGS_STOP; }
+		public boolean isError() {
+			return this!=LBFGS_SUCCESS && this!=LBFGS_STOP && this!=LBFGS_ALREADY_MINIMIZED;
+		}
 	};
 
 	/**
@@ -687,8 +690,9 @@ public class MyQN {
 			    double xnorm,
 			    double gnorm,
 			    double step,
+			    int n,
 			    int k,
-			    int ls);
+			    Status ls);
 	}
 	
 //	typedef int (*lbfgs_progress_t)(
@@ -743,6 +747,7 @@ public class MyQN {
 
 	static class Result {
 		Status status;
+		int additionalStatus;
 		double objective = Double.MAX_VALUE;
 		public Result(Status s) { status=s; }
 	}
@@ -817,26 +822,33 @@ public class MyQN {
 	    Params param)
 	{
 		int n = x.length;
-//		return new OptResult(ReturnStatus.LBFGS_SUCCESS);
 
-		int ret;
-	    int i, j, k, ls, end, bound;
-	    double step;
+		Result ret = new Result(null);
+	    int i, j, k, /*ls,*/ end, bound;
+	    Status ls;
+	    double[] step = new double[]{0};
 
 	    /* Constant parameters and their default values. */
 	    final int m = param.m;
 
 	    double[] xp;
-	    double g[] , gp[] , pg[];
-	    double d[], w[], pf[];
+	    double g[], gp[], pg[];
+	    double d[], w[], pf[] = null;
 	    iteration_data_t[] lm;
 	    iteration_data_t it;
 	    double ys, yy;
 	    double xnorm, gnorm, beta;
-	    double fx = 0;
+	    double fx[] = new double[]{0}; // singleton passing to linesearch
 	    double rate = 0;
 //	    line_search_proc linesearch = new line_search_morethuente();
 	    line_search_proc linesearch = new line_search_backtracking(); // BTO added for testing
+	    
+	    /* Construct a callback data. */
+	    callback_data_t cd = new callback_data_t();
+	    cd.n = n;
+	    cd.proc_evaluate = proc_evaluate;
+	    cd.proc_progress = proc_progress;
+
 
 	    /* Check the input parameters for errors. */
 	    if (n <= 0) {
@@ -911,26 +923,16 @@ public class MyQN {
 	    gp = new double[n];
 	    d = new double[n];
 	    w = new double[n];
-//	    if (xp == NULL || g == NULL || gp == NULL || d == NULL || w == NULL) {
-//	        ret = LBFGSERR_OUTOFMEMORY;
-//	        goto lbfgs_exit;
-//	    }
 
-	    if (param.orthantwise_c != 0.) {
+	    if (param.orthantwise_c != 0) {
 	        /* Allocate working space for OW-LQN. */
 	        pg = new double[n];
-//	        if (pg == NULL) {
-//	            ret = LBFGSERR_OUTOFMEMORY;
-//	            goto lbfgs_exit;
-//	        }
+	    } else {
+	    	pg = new double[0]; // to make java compiler happy
 	    }
 
 	    /* Allocate limited memory storage. */
 	    lm = new iteration_data_t[m];
-//	    if (lm == NULL) {
-//	        ret = LBFGSERR_OUTOFMEMORY;
-//	        goto lbfgs_exit;
-//	    }
 
 	    /* Initialize the limited memory. */
 	    for (i = 0;i < m;++i) {
@@ -951,11 +953,11 @@ public class MyQN {
 	    }
 
 	    /* Evaluate the function value and its gradient. */
-	    fx = cd.proc_evaluate(cd.instance, x, g, cd.n, 0);
+	    fx[0] = cd.proc_evaluate.evaluate(x, g, cd.n, 0);
 	    if (0. != param.orthantwise_c) {
 	        /* Compute the L1 norm of the variable and add it to the object value. */
 	        xnorm = owlqn_x1norm(x, param.orthantwise_start, param.orthantwise_end);
-	        fx += xnorm * param.orthantwise_c;
+	        fx[0] += xnorm * param.orthantwise_c;
 	        owlqn_pseudo_gradient(
 	            pg, x, g, n,
 	            param.orthantwise_c, param.orthantwise_start, param.orthantwise_end
@@ -963,8 +965,8 @@ public class MyQN {
 	    }
 
 	    /* Store the initial value of the objective function. */
-	    if (pf != NULL) {
-	        pf[0] = fx;
+	    if (pf != null) {
+	        pf[0] = fx[0];
 	    }
 
 	    /*
@@ -980,22 +982,21 @@ public class MyQN {
 	    /*
 	       Make sure that the initial variables are not a minimizer.
 	     */
-	    vec2norm(&xnorm, x, n);
+	    xnorm = vec2norm(x, n);
 	    if (param.orthantwise_c == 0.) {
-	        vec2norm(&gnorm, g, n);
+	        gnorm = vec2norm(g, n);
 	    } else {
-	        vec2norm(&gnorm, pg, n);
+	        gnorm = vec2norm(pg, n);
 	    }
 	    if (xnorm < 1.0) xnorm = 1.0;
 	    if (gnorm / xnorm <= param.epsilon) {
-	        ret = LBFGS_ALREADY_MINIMIZED;
-	        goto lbfgs_exit;
+	        return new Result(Status.LBFGS_ALREADY_MINIMIZED);
 	    }
 
 	    /* Compute the initial step:
 	        step = 1.0 / sqrt(vecdot(d, d, n))
 	     */
-	    vec2norminv(&step, d, n);
+	    step[0] = vec2norminv(d, n);
 
 	    k = 1;
 	    end = 0;
@@ -1006,34 +1007,39 @@ public class MyQN {
 
 	        /* Search for an optimal step. */
 	        if (param.orthantwise_c == 0.) {
-	            ls = linesearch(n, x, &fx, g, d, &step, xp, gp, w, &cd, &param);
+	            ls = linesearch.go(n, x, fx, g, d, step, xp, gp, w, cd, param);
 	        } else {
-	            ls = linesearch(n, x, &fx, g, d, &step, xp, pg, w, &cd, &param);
+	            ls = linesearch.go(n, x, fx, g, d, step, xp, pg, w, cd, param);
 	            owlqn_pseudo_gradient(
 	                pg, x, g, n,
 	                param.orthantwise_c, param.orthantwise_start, param.orthantwise_end
 	                );
 	        }
-	        if (ls < 0) {
+	        if (ls.isError()) {
 	            /* Revert to the previous point. */
 	            veccpy(x, xp, n);
 	            veccpy(g, gp, n);
-	            ret = ls;
-	            goto lbfgs_exit;
+	            ret.status = ls;
+	            ret.objective = fx[0];
+	            return ret;
 	        }
 
 	        /* Compute x and g norms. */
-	        vec2norm(&xnorm, x, n);
+	        xnorm = vec2norm(x, n);
 	        if (param.orthantwise_c == 0.) {
-	            vec2norm(&gnorm, g, n);
+	            gnorm=vec2norm(g, n);
 	        } else {
-	            vec2norm(&gnorm, pg, n);
+	            gnorm=vec2norm(pg, n);
 	        }
 
 	        /* Report the progress. */
-	        if (cd.proc_progress) {
-	            if ((ret = cd.proc_progress(cd.instance, x, g, fx, xnorm, gnorm, step, cd.n, k, ls))) {
-	                goto lbfgs_exit;
+	        if (cd.proc_progress != null) {
+	        	int stopEarly = cd.proc_progress.apply(x, g, fx[0], xnorm, gnorm, step[0], cd.n, k, ls);
+	            if (stopEarly != 0) {
+	            	ret.status = Status.LBFGS_STOP;
+	            	ret.additionalStatus = stopEarly;
+	            	ret.objective = fx[0];
+	            	return ret;
 	            }
 	        }
 
@@ -1045,7 +1051,7 @@ public class MyQN {
 	        if (xnorm < 1.0) xnorm = 1.0;
 	        if (gnorm / xnorm <= param.epsilon) {
 	            /* Convergence. */
-	            ret = LBFGS_SUCCESS;
+	            ret.status = Status.LBFGS_SUCCESS;
 	            break;
 	        }
 
@@ -1054,26 +1060,26 @@ public class MyQN {
 	            The criterion is given by the following formula:
 	                (f(past_x) - f(x)) / f(x) < \delta
 	         */
-	        if (pf != NULL) {
+	        if (pf != null) {
 	            /* We don't test the stopping criterion while k < past. */
 	            if (param.past <= k) {
 	                /* Compute the relative improvement from the past. */
-	                rate = (pf[k % param.past] - fx) / fx;
+	                rate = (pf[k % param.past] - fx[0]) / fx[0];
 
 	                /* The stopping criterion. */
 	                if (rate < param.delta) {
-	                    ret = LBFGS_STOP;
+	                    ret.status = Status.LBFGS_STOP;
 	                    break;
 	                }
 	            }
 
 	            /* Store the current value of the objective function. */
-	            pf[k % param.past] = fx;
+	            pf[k % param.past] = fx[0];
 	        }
 
 	        if (param.max_iterations != 0 && param.max_iterations < k+1) {
 	            /* Maximum number of iterations. */
-	            ret = LBFGSERR_MAXIMUMITERATION;
+	            ret.status = Status.LBFGSERR_MAXIMUMITERATION;
 	            break;
 	        }
 
@@ -1082,9 +1088,9 @@ public class MyQN {
 	                s_{k+1} = x_{k+1} - x_{k} = \step * d_{k}.
 	                y_{k+1} = g_{k+1} - g_{k}.
 	         */
-	        it = &lm[end];
-	        vecdiff(it->s, x, xp, n);
-	        vecdiff(it->y, g, gp, n);
+	        it = lm[end];
+	        vecdiff(it.s, x, xp, n);
+	        vecdiff(it.y, g, gp, n);
 
 	        /*
 	            Compute scalars ys and yy:
@@ -1092,9 +1098,9 @@ public class MyQN {
 	                yy = y^t \cdot y.
 	            Notice that yy is used for scaling the hessian matrix H_0 (Cholesky factor).
 	         */
-	        vecdot(&ys, it->y, it->s, n);
-	        vecdot(&yy, it->y, it->y, n);
-	        it->ys = ys;
+	        ys=vecdot(it.y, it.s, n);
+	        yy=vecdot(it.y, it.y, n);
+	        it.ys = ys;
 
 	        /*
 	            Recursive formula to compute dir = -(H \cdot g).
@@ -1119,23 +1125,23 @@ public class MyQN {
 	        j = end;
 	        for (i = 0;i < bound;++i) {
 	            j = (j + m - 1) % m;    /* if (--j == -1) j = m-1; */
-	            it = &lm[j];
+	            it = lm[j];
 	            /* \alpha_{j} = \rho_{j} s^{t}_{j} \cdot q_{k+1}. */
-	            vecdot(&it->alpha, it->s, d, n);
-	            it->alpha /= it->ys;
+	            it.alpha = vecdot(it.s, d, n);
+	            it.alpha /= it.ys;
 	            /* q_{i} = q_{i+1} - \alpha_{i} y_{i}. */
-	            vecadd(d, it->y, -it->alpha, n);
+	            vecadd(d, it.y, -it.alpha, n);
 	        }
 
 	        vecscale(d, ys / yy, n);
 
 	        for (i = 0;i < bound;++i) {
-	            it = &lm[j];
+	            it = lm[j];
 	            /* \beta_{j} = \rho_{j} y^t_{j} \cdot \gamma_{i}. */
-	            vecdot(&beta, it->y, d, n);
-	            beta /= it->ys;
+	            beta = vecdot(it.y, d, n);
+	            beta /= it.ys;
 	            /* \gamma_{i+1} = \gamma_{i} + (\alpha_{j} - \beta_{j}) s_{j}. */
-	            vecadd(d, it->s, it->alpha - beta, n);
+	            vecadd(d, it.s, it.alpha - beta, n);
 	            j = (j + 1) % m;        /* if (++j == m) j = 0; */
 	        }
 
@@ -1153,9 +1159,34 @@ public class MyQN {
 	        /*
 	            Now the search direction d is ready. We try step = 1 first.
 	         */
-	        step = 1.0;
+	        step[0] = 1.0;
 	    }
-	    return ret;
+	    
+//	    lbfgs_exit:
+	    	
+        /* Return the final value of the objective function. */
+//        if (ptr_fx != NULL) {
+//            *ptr_fx = fx;
+//        }
+
+//        vecfree(pf);
+//
+//        /* Free memory blocks used by this function. */
+//        if (lm != NULL) {
+//            for (i = 0;i < m;++i) {
+//                vecfree(lm[i].s);
+//                vecfree(lm[i].y);
+//            }
+//            vecfree(lm);
+//        }
+//        vecfree(pg);
+//        vecfree(w);
+//        vecfree(d);
+//        vecfree(gp);
+//        vecfree(g);
+//        vecfree(xp);
+
+        return ret;
 	}
 
 	static double vecdot(double[] a, double[] b, int n) {
@@ -1164,9 +1195,28 @@ public class MyQN {
 	static void veccpy(double[] y, double[] x, int n) {
 		// TODO
 	}
-	static void vecadd(double[] y, double[] x, double c, int n) {
+	static void vecadd(double[] y, final double[] x, final double c, final int n) {
 		// TODO
 	}
+	static void vecncpy(double[] y, double[] x, int n) {
+		// TODO
+	}
+	static void vecset(double[] x, final double c, final int n) { }
+	static void vecdiff(double[] z, final double[] x, final double[] y, final int n) { }
+	static void vecscale(double[] y, final double c, final int n) { }
+	static void vecmul(double[] y, final double[] x, final int n) { }
+	static double vec2norm(final double[] x, final int n)
+	{
+//	    vecdot(s, x, x, n);
+//	    *s = (lbfgsfloatval_t)sqrt(*s);
+	}
+
+	static double vec2norminv(final double[] x, final int n)
+	{
+//	    vec2norm(s, x, n);
+//	    *s = (lbfgsfloatval_t)(1.0 / *s);
+	}
+
 
 
 	static class line_search_backtracking implements line_search_proc {
