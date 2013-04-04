@@ -143,7 +143,9 @@ public class MyQN {
 	    /** A logic error (negative line-search step) occurred. */
 	    LBFGSERR_INVALIDPARAMETERS,
 	    /** The current search direction increases the objective function value. */
-	    LBFGSERR_INCREASEGRADIENT,
+	    LBFGSERR_INCREASEGRADIENT;
+	    
+		public boolean hasConverged() { return this==LBFGS_SUCCESS || this==LBFGS_STOP; }
 	};
 
 	/**
@@ -282,7 +284,7 @@ public class MyQN {
 	     *  This parameter specifies a line search algorithm to be used by the
 	     *  L-BFGS routine.
 	     */
-	    LinesearchAlgorithm linesearch = LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
+	    LinesearchAlgorithm linesearch = LinesearchAlgorithm.LBFGS_LINESEARCH_MORETHUENTE;
 
 	    /**
 	     * The maximum number of trials for the line search.
@@ -390,6 +392,8 @@ public class MyQN {
 
 	/**
 	 * Callback interface to provide objective function and gradient evaluations.
+	 * [BTO: liblbfgs's wants both at once. this is smart: often this halves
+	 * the cost; e.g. evaluate partitions only once for loglinear gradients.]
 	 *
 	 *  The lbfgs() function call this function to obtain the values of objective
 	 *  function and its gradients when needed. A client program must implement
@@ -399,17 +403,16 @@ public class MyQN {
 	 *  @param  x           The current values of variables.
 	 *  @param  g           The gradient vector. The callback function must compute
 	 *                      the gradient values for the current variables.
-	 *  @param  n           The number of variables.
 	 *  @param  step        The current step of the line search routine.
-	 *  @retval lbfgsfloatval_t The value of the objective function for the current
+	 *  @retval  			The value of the objective function for the current
 	 *                          variables.
 	 *                          
 	 *  @param  instance    The user data sent for lbfgs() function by the client.  BTO REMOVED
-	 *
+	 *  @param  n           The number of variables. BTO REMOVED
 	 */
 	static interface Function {
 		/** receive x. fill in g. return objective. */
-		public double evaluate(double[] x, double[] g, int n, double step);
+		public double evaluate(final double[] x, double[] g, double step);
 	}
 //	typedef lbfgsfloatval_t (*lbfgs_evaluate_t)(
 //	    void *instance,
@@ -433,11 +436,13 @@ public class MyQN {
 	 *  @param  xnorm       The Euclidean norm of the variables.
 	 *  @param  gnorm       The Euclidean norm of the gradients.
 	 *  @param  step        The line-search step used for this iteration.
-	 *  @param  n           The number of variables.
 	 *  @param  k           The iteration count.
 	 *  @param  ls          The number of evaluations called for this iteration.
 	 *  @retval int         Zero to continue the optimization process. Returning a
 	 *                      non-zero value will cancel the optimization process.
+
+	 *  @param  n           The number of variables.  BTO REMOVED
+
 	 */
 	static interface ProgressCallback {
 		public int apply(
@@ -447,7 +452,6 @@ public class MyQN {
 			    double xnorm,
 			    double gnorm,
 			    double step,
-			    int n,
 			    int k,
 			    int ls);
 	}
