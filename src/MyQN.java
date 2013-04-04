@@ -547,39 +547,7 @@ public class MyQN {
 		public OptResult(ReturnStatus s) { status=s; }
 	}
 
-	/**
-	 * Initialize L-BFGS parameters to the default values.
-	 *
-	 *  Call this function to fill a parameter structure with the default values
-	 *  and overwrite parameter values if necessary.
-	 *
-	 *  @param  param       The pointer to the parameter structure.
-	 */
-	void lbfgs_parameter_init(Params param) { }
-
-	/**
-	 * Allocate an array for variables.
-	 *
-	 *  This function allocates an array of variables for the convenience of
-	 *  ::lbfgs function; the function has a requreiemt for a variable array
-	 *  when libLBFGS is built with SSE/SSE2 optimization routines. A user does
-	 *  not have to use this function for libLBFGS built without SSE/SSE2
-	 *  optimization.
-	 *  
-	 *  @param  n           The number of variables.
-	 */
-	double lbfgs_malloc(int n) { return -1; }
-
-	/**
-	 * Free an array of variables.
-	 *  
-	 *  @param  x           The array of variables allocated by ::lbfgs_malloc
-	 *                      function.
-	 */
-	void lbfgs_free(double[] x) { }
-
-
-
+	
 	/**
 	@mainpage libLBFGS: a library of Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS)
 
