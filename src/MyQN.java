@@ -289,7 +289,7 @@ public class MyQN {
 	 * 
 	 *  Roughly speaking, a negative value indicates an error.
 	 */
-	enum ReturnStatus {
+	enum Status {
 	    /** L-BFGS reaches convergence. */
 	    LBFGS_SUCCESS,
 	    LBFGS_STOP,
@@ -408,6 +408,22 @@ public class MyQN {
 	     */
 	    LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE,
 	};
+	
+	static interface line_search_proc {
+		public int go(
+			    int n,
+			    double[] x,
+			    double[] f,
+			    double[] g,
+			    double[] s,
+			    double[] stp,
+			    final double[] xp,
+			    final double[] gp,
+			    double[] wa,
+			    Function evaluate, ProgressCallback progress,
+			    Params param
+		);
+	}
 
 	/**
 	 * L-BFGS optimization parameters.
@@ -708,7 +724,14 @@ public class MyQN {
 	*/
 	
 
-	public static OptResult lbfgs(
+	public static Result lbfgs(
+		    double[] x,
+		    Function proc_evaluate)
+	{
+		return lbfgs(x, proc_evaluate, null, new Params());
+	}
+
+	public static Result lbfgs(
 		    double[] x,
 		    Function proc_evaluate,
 		    ProgressCallback proc_progress)
@@ -716,10 +739,10 @@ public class MyQN {
 		return lbfgs(x, proc_evaluate, proc_progress, new Params());
 	}
 
-	static class OptResult {
-		ReturnStatus status;
+	static class Result {
+		Status status;
 		double objective = Double.MAX_VALUE;
-		public OptResult(ReturnStatus s) { status=s; }
+		public Result(Status s) { status=s; }
 	}
 	
 
@@ -786,7 +809,7 @@ public class MyQN {
 	 *                      minimization process terminates without an error. A
 	 *                      non-zero value indicates an error.
 	 */
-	public static OptResult lbfgs(
+	public static Result lbfgs(
 	    double[] x,
 	    Function proc_evaluate,
 	    ProgressCallback proc_progress,
@@ -797,10 +820,9 @@ public class MyQN {
 
 		int ret;
 	    int i, j, k, ls, end, bound;
-	    lbfgsfloatval_t step;
+	    double step;
 
 	    /* Constant parameters and their default values. */
-	    lbfgs_parameter_t param = (_param != NULL) ? (*_param) : _defparam;
 	    final int m = param.m;
 
 	    double[] xp;
@@ -811,86 +833,61 @@ public class MyQN {
 	    double xnorm, gnorm, beta;
 	    double fx = 0;
 	    double rate = 0;
-	    line_search_proc linesearch = line_search_morethuente;
-
-	    /* Construct a callback data. */
-	    callback_data_t cd;
-	    cd.n = n;
-	    cd.instance = instance;
-	    cd.proc_evaluate = proc_evaluate;
-	    cd.proc_progress = proc_progress;
-
-//	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
-//	    /* Round out the number of variables. */
-//	    n = round_out_variables(n);
-//	#endif/*defined(USE_SSE)*/
+	    line_search_proc linesearch = new line_search_morethuente();
+//	    line_search_proc linesearch = new line_search_backtracking(); // BTO added for testing
 
 	    /* Check the input parameters for errors. */
 	    if (n <= 0) {
-	        return LBFGSERR_INVALID_N;
+	        return new Result(Status.LBFGSERR_INVALID_N);
 	    }
-//	#if     defined(USE_SSE) && (defined(__SSE__) || defined(__SSE2__))
-//	    if (n % 8 != 0) {
-//	        return LBFGSERR_INVALID_N_SSE;
-//	    }
-//	    if ((uintptr_t)(const void*)x % 16 != 0) {
-//	        return LBFGSERR_INVALID_X_SSE;
-//	    }
-//	#endif/*defined(USE_SSE)*/
 	    if (param.epsilon < 0.) {
-	        return LBFGSERR_INVALID_EPSILON;
+	        return new Result(Status.LBFGSERR_INVALID_EPSILON);
 	    }
 	    if (param.past < 0) {
-	        return LBFGSERR_INVALID_TESTPERIOD;
+	    	return new Result(Status.LBFGSERR_INVALID_TESTPERIOD);
 	    }
 	    if (param.delta < 0.) {
-	        return LBFGSERR_INVALID_DELTA;
+	    	return new Result(Status.LBFGSERR_INVALID_DELTA);
 	    }
 	    if (param.min_step < 0.) {
-	        return LBFGSERR_INVALID_MINSTEP;
+	    	return new Result(Status.LBFGSERR_INVALID_MINSTEP);
 	    }
 	    if (param.max_step < param.min_step) {
-	        return LBFGSERR_INVALID_MAXSTEP;
+	    	return new Result(Status.LBFGSERR_INVALID_MAXSTEP);
 	    }
 	    if (param.ftol < 0.) {
-	        return LBFGSERR_INVALID_FTOL;
+	    	return new Result(Status.LBFGSERR_INVALID_FTOL);
 	    }
-	    if (param.linesearch == LBFGS_LINESEARCH_BACKTRACKING_WOLFE ||
-	        param.linesearch == LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE) {
+	    if (param.linesearch == LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_WOLFE ||
+	        param.linesearch == LinesearchAlgorithm.LBFGS_LINESEARCH_BACKTRACKING_STRONG_WOLFE) {
 	        if (param.wolfe <= param.ftol || 1. <= param.wolfe) {
-	            return LBFGSERR_INVALID_WOLFE;
+	            return new Result(Status.LBFGSERR_INVALID_WOLFE);
 	        }
 	    }
 	    if (param.gtol < 0.) {
-	        return LBFGSERR_INVALID_GTOL;
+	        return new Result(Status.LBFGSERR_INVALID_GTOL);
 	    }
 	    if (param.xtol < 0.) {
-	        return LBFGSERR_INVALID_XTOL;
+	        return new Result(Status.LBFGSERR_INVALID_XTOL);
 	    }
 	    if (param.max_linesearch <= 0) {
-	        return LBFGSERR_INVALID_MAXLINESEARCH;
+	        return new Result(Status.LBFGSERR_INVALID_MAXLINESEARCH);
 	    }
 	    if (param.orthantwise_c < 0.) {
-	        return LBFGSERR_INVALID_ORTHANTWISE;
+	        return new Result(Status.LBFGSERR_INVALID_ORTHANTWISE);
 	    }
 	    if (param.orthantwise_start < 0 || n < param.orthantwise_start) {
-	        return LBFGSERR_INVALID_ORTHANTWISE_START;
+	        return new Result(Status.LBFGSERR_INVALID_ORTHANTWISE_START);
 	    }
 	    if (param.orthantwise_end < 0) {
 	        param.orthantwise_end = n;
 	    }
 	    if (n < param.orthantwise_end) {
-	        return LBFGSERR_INVALID_ORTHANTWISE_END;
+	        return new Result(Status.LBFGSERR_INVALID_ORTHANTWISE_END);
 	    }
 	    if (param.orthantwise_c != 0.) {
-	        switch (param.linesearch) {
-	        case LBFGS_LINESEARCH_BACKTRACKING:
-	            linesearch = line_search_backtracking_owlqn;
-	            break;
-	        default:
-	            /* Only the backtracking method is available. */
-	            return LBFGSERR_INVALID_LINESEARCH;
-	        }
+            /* Only the backtracking method is available. */
+            linesearch = line_search_backtracking_owlqn;
 	    } else {
 	        switch (param.linesearch) {
 	        case LBFGS_LINESEARCH_MORETHUENTE:
@@ -1185,7 +1182,9 @@ public class MyQN {
 
 
 
-	static int line_search_backtracking(
+	static class line_search_backtracking implements line_search_proc {
+	
+	int go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1195,7 +1194,7 @@ public class MyQN {
 	    final double[]  xp,
 	    final double[]  gp,
 	    double[] wp,
-	    callback_data_t cd,
+	    Function evaluator, ProgressCallback progress,
 	    Params param
 	    )
 	{
@@ -1275,10 +1274,13 @@ public class MyQN {
 	        (*stp) *= width;
 	    }
 	}
+	}
 
 
 
-	static int line_search_backtracking_owlqn(
+	static class line_search_backtracking_owlqn implements line_search_proc { 
+	
+	public int go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1288,7 +1290,7 @@ public class MyQN {
 	    final double[] xp,
 	    final double[] gp,
 	    double[] wp,
-	    callback_data_t cd,
+	    Function evaluate, ProgressCallback progress,
 	    Params param
 	    )
 	{
@@ -1349,10 +1351,13 @@ public class MyQN {
 	        (*stp) *= width;
 	    }
 	}
+	}
 
 
 
-	static int line_search_morethuente(
+	static class line_search_morethuente implements line_search_proc {
+	
+	public int go(
 	    int n,
 	    double[] x,
 	    double[] f,
@@ -1362,7 +1367,7 @@ public class MyQN {
 	    final double[] xp,
 	    final double[] gp,
 	    double[] wa,
-	    callback_data_t cd,
+	    Function evaluator, ProgressCallback progress,
 	    Params param
 	    )
 	{
@@ -1541,6 +1546,7 @@ public class MyQN {
 	    }
 
 	    return LBFGSERR_LOGICERROR;
+	}
 	}
 
 
