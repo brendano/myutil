@@ -225,7 +225,6 @@ public class LDA {
 	
 	void train() {
 		sampleIteration(true);
-//		if (Opts.concResampleEvery >= 0) resampleConcs();
 
 		for (int iter=1; iter<Opts.maxIter; iter++) {
 			U.pf("ITER %d\n", iter);
