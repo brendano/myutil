@@ -6,7 +6,6 @@ import java.util.*;
 /**
  * a port of liblbfgs to java
  * http://www.chokkan.org/software/liblbfgs/
- * @author brendano
  *
  *
 	@mainpage libLBFGS: a library of Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS)
@@ -291,7 +290,7 @@ public class LBFGS {
 	 * 
 	 *  Roughly speaking, a negative value indicates an error.
 	 */
-	enum Status {
+	public static enum Status {
 	    /** L-BFGS reaches convergence. */
 	    LBFGS_SUCCESS,
 	    LBFGS_STOP,
@@ -491,7 +490,7 @@ public class LBFGS {
 	     *  parameter is zero, the library does not perform the delta-based
 	     *  convergence test.
 	     */
-		public int             past = 0;
+		public int             past = 3; // BTO: changed from '0'
 
 	    /**
 	     * Delta for convergence test.
@@ -502,6 +501,8 @@ public class LBFGS {
 	     *  where f' is the objective value of \ref past iterations ago, and f is
 	     *  the objective value of the current iteration.
 	     *  The default value is \c 0.
+	     *  
+	     *  REQUIRES 'past' TO BE SET
 	     */
 		public double delta = 1e-5;
 
@@ -681,7 +682,7 @@ public class LBFGS {
 	 *  @retval int         Zero to continue the optimization process. Returning a
 	 *                      non-zero value will cancel the optimization process.
 	 */
-	static interface ProgressCallback {
+	public static interface ProgressCallback {
 		public int apply(
 			    double[] x,
 			    double[] g,
@@ -728,10 +729,10 @@ public class LBFGS {
 	In this formula, ||.|| denotes the Euclidean norm.
 	*/
 	
-	static class Result {
-		Status status;
-		int additionalStatus;
-		double objective = Double.MAX_VALUE;
+	public static class Result {
+		public Status status;
+		public int additionalStatus;
+		public double objective = Double.MAX_VALUE;
 		public Result(Status s) { status=s; }
 		public String toString() {
 			return String.format("status=%s obj=%g", status, objective);
@@ -770,6 +771,37 @@ public class LBFGS {
 		    ProgressCallback proc_progress)
 	{
 		return lbfgs(x, proc_evaluate, proc_progress, new Params());
+	}
+
+	/** safer & debug-friendly options */
+	public static Result lbfgs(
+		    double[] x,
+		    int maxIter,
+		    Function proc_evaluate)
+	{
+		Params p = new Params();
+		p.max_iterations = maxIter;
+		ProgressCallback cb = new ProgressCallback() {
+			@Override
+			public int apply(double[] x, double[] g, double fx, double xnorm,
+					double gnorm, double step, int n, int k, LBFGS.Status ls) {
+				System.out.printf("optiter %d obj=%g solelt=%.6g\n", k, fx, x[0]);
+				return 0;
+			}
+		};
+		return lbfgs(x, proc_evaluate, cb, p);
+	}
+
+	/** safer & debug-friendly options */
+	public static Result lbfgsNice(
+		    double[] x,
+		    int maxIter,
+		    Function proc_evaluate,
+		    ProgressCallback cb)
+	{
+		Params p = new Params();
+		p.max_iterations = maxIter;
+		return lbfgs(x, proc_evaluate, cb, p);
 	}
 
 	/**
