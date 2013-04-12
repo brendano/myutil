@@ -288,7 +288,7 @@ public class LNInference {
 //		return U.pair(sample, logprob);
 //	}
 	
-	static double[] sampleDiagMV(double[] mean, double[] variances, FastRandom rand) {
+	public static double[] sampleDiagMV(double[] mean, double[] variances, FastRandom rand) {
 		int K = mean.length;
 		double[] sample = new double[K];
 		for (int k=0; k<K; k++)
@@ -372,7 +372,7 @@ public class LNInference {
 		MCMC.ProposalDensity proposalDensity = new MCMC.ProposalDensity() {
 			@Override
 			public double apply(double[] currentState_ignored, double[] proposedState) {
-				return Util.diagMVLL(proposedState, etaMode, approxVar);
+				return Util.normalDiagLL(proposedState, etaMode, approxVar);
 			}
 		};
 		
@@ -399,8 +399,8 @@ public class LNInference {
 		// Take the proposal and consider it.
 		// q(x|.) doesn't depend on RHS, so it's really just q(x) versus q(x')
 		double[] newEta = sampleDiagMV(etaMode, approxVar, rand);
-		double lq_new = Util.diagMVLL(newEta, etaMode, approxVar);
-		double lq_old = Util.diagMVLL(oldEta, etaMode, approxVar);
+		double lq_new = Util.normalDiagLL(newEta, etaMode, approxVar);
+		double lq_old = Util.normalDiagLL(oldEta, etaMode, approxVar);
 		double lp_new = calcUnnormLogprob(newEta, counts, etaMean, etaVar);
 		double lp_old = calcUnnormLogprob(oldEta, counts, etaMean, etaVar);
 		double lalpha = lp_new-lp_old + lq_old-lq_new;

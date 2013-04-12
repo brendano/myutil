@@ -3,6 +3,8 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrays;
 
 import java.util.*;
 
+import util.Jama.Matrix;
+
 import com.google.common.collect.*;
 
 import edu.stanford.nlp.math.SloppyMath;
@@ -14,13 +16,28 @@ import edu.stanford.nlp.math.SloppyMath;
  **/
 public class Util {
 	
+	/** unnormalized log-prob (no partition)
+	 * WARNING takes the PRECISION matrix (inverse covariance) */
+	public static double normalMVLL_unnorm(double[] x, double[] mean, double[][] prec) {
+		int D = mean.length;
+		assert D>0 && D==prec.length && D==prec[0].length;
+		double ll = 0;
+		for (int i=0; i<D; i++) {
+			for (int j=0; j<D; j++) {
+				ll += prec[i][j] * (x[i]-mean[i]) * (x[j]-mean[j]);
+			}
+		}
+		assert ll >= 0;
+		return ll * -0.5;
+	}
+	
 	/** univariate normal density N(x | mean, var) */
 	public static double normalLL(double x, double mean, double var) {
 		double diff = x-mean;
 		return -Math.log(Math.sqrt(2*Math.PI * var)) - (0.5/var) * diff*diff;
 	}
 	/** multivariate normal density under diagonal covariance */
-	public static double diagMVLL(double[] x, double[] mean, double[] vars) {
+	public static double normalDiagLL(double[] x, double[] mean, double[] vars) {
 		double lp = 0;
 		for (int k=0; k < mean.length; k++) {
 			lp += normalLL(x[k], mean[k], vars[k]);

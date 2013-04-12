@@ -2802,6 +2802,10 @@ public class Arr {
 		  return result;
 	  }
 
+	  public static double varianceMLE(double[] a) {
+		  return sumSquaredError(a) / a.length;
+	  }
+
 	  public static double variance(double[] a) {
 		  return sumSquaredError(a) / (a.length - 1);
 	  }

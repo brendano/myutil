@@ -329,8 +329,9 @@ public class FastRandom implements Serializable {
     }
 
     /** Return a random double drawn from a Gaussian distribution with mean m and variance s2. */
-    public double nextGaussian(double m,double s2) {
-    	return nextGaussian()*Math.sqrt(s2)+m;
+    public double nextGaussian(double mean, double var) {
+    	assert var > 0;
+    	return nextGaussian()*Math.sqrt(var) + mean;
     }
 
     // generate Gamma(1,1)
@@ -551,6 +552,11 @@ public class FastRandom implements Serializable {
 
 
   //////////////////////////  END mallet section
+    
+//    static double qcauchy(double p, double center, double gamma) {
+//    	// http://en.wikipedia.org/wiki/Cauchy_distribution#Cumulative_distribution_function
+//    	return center + gamma * Math.tan(Math.PI * (p - 0.5));
+//    }
 
     //////////////////////
     
