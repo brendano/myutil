@@ -756,26 +756,33 @@ public class LBFGS {
 	}
 //	typedef struct tag_iteration_data iteration_data_t;
 
-	/** See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
+	/**
+	 * Use default parameters. 
+	 * See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
 	public static Result lbfgs(
-		    double[] x,
+		    double[] init,
 		    Function proc_evaluate)
 	{
-		return lbfgs(x, proc_evaluate, null, new Params());
+		return lbfgs(init, proc_evaluate, null, new Params());
 	}
 
-	/** See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
+	/** 
+	 * Use default parameters.
+	 * See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)} */
 	public static Result lbfgs(
-		    double[] x,
+		    double[] init,
 		    Function proc_evaluate,
 		    ProgressCallback proc_progress)
 	{
-		return lbfgs(x, proc_evaluate, proc_progress, new Params());
+		return lbfgs(init, proc_evaluate, proc_progress, new Params());
 	}
 
-	/** safer & debug-friendly options */
+	/**
+	 * Use debug-friendly parameters & callback.
+	 * See {@link LBFGS#lfbgs(double[], Function, ProgressCallback, Params)}
+	 */
 	public static Result lbfgs(
-		    double[] x,
+		    double[] init,
 		    int maxIter,
 		    Function proc_evaluate)
 	{
@@ -785,11 +792,11 @@ public class LBFGS {
 			@Override
 			public int apply(double[] x, double[] g, double fx, double xnorm,
 					double gnorm, double step, int n, int k, LBFGS.Status ls) {
-				System.out.printf("optiter %d obj=%g solelt=%.6g\n", k, fx, x[0]);
+				System.out.printf("optiter %d obj=%g solelt=%g\n", k, fx, x[0]);
 				return 0;
 			}
 		};
-		return lbfgs(x, proc_evaluate, cb, p);
+		return lbfgs(init, proc_evaluate, cb, p);
 	}
 
 	/** safer & debug-friendly options */

@@ -284,7 +284,7 @@ public class FastRandom implements Serializable {
     	return a + (b-a)*nextUniform();
     }
 
-    /** Draw a single sample from multinomial "a". */
+    /** Draw a single sample from multinomial "a". ASSUME SUMS to 1 ! */
     public int nextDiscrete (double[] a) {
     	double b = 0, r = nextUniform();
     	for (int i = 0; i < a.length; i++) {
