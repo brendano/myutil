@@ -6,15 +6,15 @@ import util.Jama.QRDecomposition;
 /**
  * various bayesian inference procedures for conjugate prior linear gaussian models
  * intended to support Gibbs samplers
+ * - Scalar mean, var
  * - Linear Regression
  * - Stationary 1d LDS
- * - Scalars
  * 
  */
 public class GaussianInference {
 	/**
-	 * Sample a scalar variance from conjugate posterior, under scaled inverse chi-sq prior.
-	 * @param sumSqDev: sum (x_i - xbar)^2
+	 * Sample a scalar variance from conjugate posterior, under scaled inverse chi-sq prior (i.e. inv wishart)
+	 * @param sumSqDev: sum (x_i - xbar)^2  (= [sum x_i^2] - [sum x_i]^2 )
 	 * @param priorVar: sigma_0^2 in Murphy 4.6.2.2 notation
 	 * @param priorStrength: nu_0 in Murphy 4.6.2.2 notation
 	 */
@@ -31,6 +31,13 @@ public class GaussianInference {
 		return 1 / rand.nextGamma(shape, 1/rate);
 		// I always get very confused about this, esp since the inverse gamma has its parameters look inverted again compared to the gamma.
 		// Only safe thing to do is look at histograms per parameter
+	}
+	
+	/** "center" is mode or mean..? */
+	public static double sampleInvChisq(double center, double strength, FastRandom rand) {
+		double shape = strength / 2;
+		double rate = strength*center / 2;
+		return 1 / rand.nextGamma(shape, 1/rate);
 	}
 	
 	public static double samplePosteriorVariance(double[] data, double priorValue, double priorStrength, FastRandom rand) {
@@ -71,7 +78,7 @@ public class GaussianInference {
 	public static double samplePosteriorMean(double[] data, double[] emissionVars, double priorMean, double priorVar, FastRandom rand) {
 		double[] emitPrecs = Arr.copy(emissionVars);
 		Arr.powInPlace(emitPrecs, -1);
-		RunningVar rv = new RunningVar();  // overkill, could be made faster
+		OnlineNormal1dWeighted rv = new OnlineNormal1dWeighted();  // overkill, could be made faster
 		for (int i=0; i < data.length; i++) {
 			rv.add(data[i], emitPrecs[i]);
 		}
@@ -173,19 +180,34 @@ public class GaussianInference {
 		Matrix postPrec= R.transpose().times(R);
 		
 		MVNormalParams param = new MVNormalParams();
-		param.mean = d.postMean.getRowPackedCopy();
+		param.mean = d.mean;
 		param.var  = postVar.getArray();
 		param.prec = postPrec.getArray();
 		return param;
 	}
 	
 	/**
-	 * Intermediate state during bayes linreg computation.
+	 * Represents a linreg coef MVN posterior,
+	 * in the first stage of computation: right after running the QR decomposition.
 	 * The R matrix is the coefs' precision root.  R^-1 is variance root.
 	 */
 	public static class LinregDecomp {
-		QRDecomposition qr; // QR decomp of X
-		Matrix postMean; 	// coefs' posterior mean
+		public QRDecomposition qr; // QR decomp of X
+		public double[] mean; 	// coefs' posterior mean
+		
+		/** draw one coef sample from this MVN posterior. */
+		public double[] sample(FastRandom rand) {
+			return MVNormal2.nextMVNormalWithCholesky(
+					mean,
+					qr.getR().getColumnPackedCopy(),
+					rand);
+		}
+		
+		/** posterior precision of the coefs. */
+		public double[][] precision() {
+			Matrix R = qr.getR();
+			return R.transpose().times(R).getArray();
+		}
 	}
 	
 	/** lower-level routine: get the relevant QR decomposition for this bayes linreg. */
@@ -202,11 +224,12 @@ public class GaussianInference {
 		double[] Ytilde = Arr.concat(Arr.multiply(Y, 1/noiseSd), L.times(priorMean_).getRowPackedCopy());
 		
 		QRDecomposition qr = new QRDecomposition(new Matrix(Xtilde));
-		ret.postMean = qr.solve(new Matrix(Ytilde, Ytilde.length));
+		ret.mean = qr.solve(new Matrix(Ytilde, Ytilde.length)).getRowPackedCopy();
 		ret.qr = qr;
 		return ret;
 	}
 
+	/** noiseVars allows different noise terms, though independent. */
 	public static LinregDecomp estPosteriorLinregDecomp(
 			double[][] X, double[] Y, double[] noiseVars, 
 			double[] priorMean, double[][] priorPrec)
@@ -227,9 +250,21 @@ public class GaussianInference {
 		double[] Ytilde = Arr.concat(Ytilde1, L.times(priorMean_).getRowPackedCopy());
 		
 		QRDecomposition qr = new QRDecomposition(new Matrix(Xtilde));
-		ret.postMean = qr.solve(new Matrix(Ytilde, Ytilde.length));
+		ret.mean = qr.solve(new Matrix(Ytilde, Ytilde.length)).getRowPackedCopy();
 		ret.qr = qr;
 		return ret;
+	}
+
+	/** coef prior is in PRECISION (not variance!) */ 
+	public static double[] samplePosteriorLinregCoefs(
+			double[][] X, double[] Y, double noiseVar, 
+			double priorMean, double priorPrec,
+			FastRandom random
+	) {
+		int J = X[0].length;
+		double[][] _priorPrec = Arr.diag(Arr.rep(priorPrec, J));
+		double[] _priorMean = Arr.rep(priorMean, J);
+		return samplePosteriorLinregCoefs(X,Y,noiseVar,_priorMean,_priorPrec, random);
 	}
 
 	
@@ -252,7 +287,7 @@ public class GaussianInference {
 		// we can do a cheap transpose by asking for a column-packed copy; Mallet interprets as row-packed.
 		// would be better to rewrite the mallet routines for this
 		return MVNormal2.nextMVNormalWithCholesky(
-				d.postMean.getRowPackedCopy(),
+				d.mean,
 				d.qr.getR().getColumnPackedCopy(),
 				random);
 	}
@@ -264,13 +299,24 @@ public class GaussianInference {
 	) {
 		LinregDecomp d = estPosteriorLinregDecomp(X, Y, noiseVars, priorMean, priorPrec);
 		return MVNormal2.nextMVNormalWithCholesky(
-				d.postMean.getRowPackedCopy(),
+				d.mean,
 				d.qr.getR().getColumnPackedCopy(),
 				random);
 	}
 
+	static void testLinreg2(String args[]) {
+		double[][] X = Arr.readDoubleMatrix(args[0]);
+		double[] Y = Arr.readDoubleVector(args[1]);
+		int J = X[0].length;
+		LinregDecomp d = estPosteriorLinregDecomp(X, Y, 1,
+				Arr.rep(0, J), Arr.diag(Arr.rep(1, J)));
+		for (int i=0; i<1000; i++) {
+			double[] beta = d.sample(FastRandom.rand());
+			U.p("beta " + Arr.sf("%.3g", beta));
+		}
+	}
 	
-	static void testLinreg(String args[]) {
+	static void testLinreg1(String args[]) {
 		FastRandom rand = new FastRandom();
 		
 		double[][] X = new double[][]{{1,1}, {1,1}, {1,1}};
@@ -534,9 +580,10 @@ public class GaussianInference {
 	
 	
 	public static void main(String args[]) {
+		testLinreg2(args);
 //		testKF2(args);
 //		testLinreg(args);
 //		testPosteriorVariance(args);
-		testPosteriorMean(args);
+//		testPosteriorMean(args);
 	}
 }
