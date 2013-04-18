@@ -263,6 +263,11 @@ public class Arr {
 		Arrays.fill(ret, value);
 		return ret;
 	}
+	public static int[] repInts(int value, int N) {
+		int[] ret = new int[N];
+		Arrays.fill(ret, value);
+		return ret;
+	}
 	/** beyond R rep() */
 	public static double[][] rep(double value, int nrow, int ncol) {
 		double[][] ret = new double[nrow][ncol];
