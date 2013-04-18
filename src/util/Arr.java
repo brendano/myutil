@@ -47,6 +47,14 @@ public class Arr {
 	private static final Random rand = new Random();
 
 	//////////// new stuff  ////////////////////////
+	
+	public static double GROWTH_MULTIPLIER = 1.5;
+
+	public static double[] grow(double[] x) {
+		double[] y = new double[(int) Math.ceil(GROWTH_MULTIPLIER * x.length)];
+		System.arraycopy(x,0, y,0, x.length);
+		return y;
+	}
 
 	public static double[] abs(double[] x) {
 		double[] y = new double[x.length];
