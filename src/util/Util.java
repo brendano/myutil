@@ -3,6 +3,8 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrays;
 
 import java.util.*;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
+
 import util.Jama.Matrix;
 
 import com.google.common.collect.*;
@@ -15,6 +17,26 @@ import edu.stanford.nlp.math.SloppyMath;
  * Basic things involving arrays and matrixes should instead go into Arr.
  **/
 public class Util {
+
+	public static double normalSampleLeftTrunc(double lowerBound, double mean, double var) {
+		NormalDistribution d = new NormalDistribution(mean, Math.sqrt(var));
+		double lowerBoundQuantile = d.cumulativeProbability(lowerBound); 
+		double u = FastRandom.rand().nextUniform(lowerBoundQuantile, 1);
+		return d.inverseCumulativeProbability(u);
+	}
+	public static double normalSampleRightTrunc(double upperBound, double mean, double var) {
+		NormalDistribution d = new NormalDistribution(mean, Math.sqrt(var));
+		double upperBoundQuantile = d.cumulativeProbability(upperBound);
+		double u = FastRandom.rand().nextUniform(0, upperBoundQuantile);
+		return d.inverseCumulativeProbability(u);
+	}
+	
+//	public static void main(String[] args) {
+//		for (int i=0; i<10000; i++) {
+//			double x = normalSampleRightTrunc(Double.valueOf(args[0]), Double.valueOf(args[1]), Double.valueOf(args[2]));
+//			U.p(x);
+//		}
+//	}
 	
 	/** unnormalized log-prob (no partition)
 	 * WARNING takes the PRECISION matrix (inverse covariance) */
