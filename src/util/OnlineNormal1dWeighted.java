@@ -4,10 +4,14 @@ package util;
  * Provides online variance and mean, optionally with weighting.
  * via Welford's algorithm (modified to add weights).
  * this could be rewritten without weights to be a little faster.
+ * 
  * https://github.com/brendano/running_stat/blob/master/running_stat.cc
  * http://www.johndcook.com/standard_deviation.html
+ * 
+ * TODO recheck the weighting calculations are correct...
+ * i did this a long time ago and didn't write anything down for it.
  */
-public class RunningVar {
+public class OnlineNormal1dWeighted {
 
 	double ss = 0;           // (running) sum of square deviations from mean
 	double m = 0;            // (running) mean
@@ -18,7 +22,6 @@ public class RunningVar {
 	public void add(double x) {
 		add(x,1);
 	}
-
 
 	public void add(double x, double w) {
 		n++;
@@ -35,7 +38,8 @@ public class RunningVar {
 		}
 	}
 
-	public double var() { 
+	public double var() {
+		if (totalW==0) return 0;
 		return ss / totalW; 
 	}
 	public double sd() { 
