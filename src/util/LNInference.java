@@ -60,12 +60,13 @@ public class LNInference {
 	public static double calcUnnormLogprob(final double[] eta,
 			final double[] counts, final double[] etaMean, final double etaVar[])
 	{
-		final int K = eta.length;
+		final int K = eta.length + 1;
 		double[] theta = Arr.softmax1(eta);
 		double ll = 0;
 		for (int k=0; k < K; k++) {
 			ll += counts[k] * Math.log(theta[k]);
-			ll += -1/(2*etaVar[k]) * Math.pow(eta[k] - etaMean[k], 2);
+			if (k < K-1)
+				ll += -1/(2*etaVar[k]) * Math.pow(eta[k] - etaMean[k], 2);
 		}
 		return ll;
 	}
