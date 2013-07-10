@@ -56,6 +56,30 @@ public class Arr {
 		return y;
 	}
 
+	public static long[] grow(long[] x, double multiplier) {
+		long[] y = new long[(int) Math.ceil(multiplier * x.length)];
+		System.arraycopy(x,0, y,0, x.length);
+		return y;
+	}
+	
+	public static int[] grow(int[] x) {
+		int[] y = new int[(int) Math.ceil(GROWTH_MULTIPLIER * x.length)];
+		System.arraycopy(x,0, y,0, x.length);
+		return y;
+	}
+
+	public static int[][] grow(int[][] x) {
+		int[][] y = new int[(int) Math.ceil(GROWTH_MULTIPLIER * x.length)][];
+		System.arraycopy(x,0, y,0, x.length);
+		return y;
+	}
+
+	public static int[][][] grow(int[][][] x) {
+		int[][][] y = new int[(int) Math.ceil(GROWTH_MULTIPLIER * x.length)][][];
+		System.arraycopy(x,0, y,0, x.length);
+		return y;
+	}
+	
 	public static double[] abs(double[] x) {
 		double[] y = new double[x.length];
 		for (int i=0; i<x.length; i++)
@@ -1183,6 +1207,24 @@ public class Arr {
 		return new HashSet<T>(Arrays.asList(a));
 	}
 
+	public static void fill(int[][] d, int val) {
+		for (int[] aD : d) {
+			Arrays.fill(aD, val);
+		}
+	}
+
+	public static void fill(int[][][] d, int val) {
+		for (int[][] aD : d) {
+			fill(aD, val);
+		}
+	}
+
+	public static void fill(int[][][][] d, int val) {
+		for (int[][][] aD : d) {
+			fill(aD, val);
+		}
+	}
+	
 	public static void fill(double[][] d, double val) {
 		for (double[] aD : d) {
 			Arrays.fill(aD, val);
@@ -1200,6 +1242,7 @@ public class Arr {
 			fill(aD, val);
 		}
 	}
+
 
 	public static void fill(boolean[][] d, boolean val) {
 		for (boolean[] aD : d) {

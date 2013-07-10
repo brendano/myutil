@@ -15,9 +15,27 @@ import edu.stanford.nlp.math.SloppyMath;
  * Stats and math utils
  * 
  * Basic things involving arrays and matrixes should instead go into Arr.
+ * 
+ * Naming convention for gaussians:
+ *   'normal'     ==> univariate normal
+ *   'normalMV'   ==> multivariate normal
+ *   'normalDiag' ==> multivariate normal with diagonal covariance
+ *   
  **/
 public class Util {
 
+	/** return x \in R.  use scale=1 */
+	public static double logitSampleLeftTrunc(double lowerBound, double logisticMean) {
+		double lowQuantile = SloppyMath.sigmoid(lowerBound - logisticMean);
+		double u = FastRandom.rand().nextUniform(lowQuantile, 1);
+		return logisticMean + Math.log(u/(1-u));
+	}
+	/** return x \in R.  use scale=1 */
+	public static double logitSampleRightTrunc(double upperBound, double logisticMean) {
+		double highQuantile = SloppyMath.sigmoid(upperBound - logisticMean);
+		double u = FastRandom.rand().nextUniform(0, highQuantile);
+		return logisticMean + Math.log(u/(1-u));
+	}
 	public static double normalSampleLeftTrunc(double lowerBound, double mean, double var) {
 		NormalDistribution d = new NormalDistribution(mean, Math.sqrt(var));
 		double lowerBoundQuantile = d.cumulativeProbability(lowerBound); 
@@ -43,14 +61,15 @@ public class Util {
 	public static double normalMVLL_unnorm(double[] x, double[] mean, double[][] prec) {
 		int D = mean.length;
 		assert D>0 && D==prec.length && D==prec[0].length;
-		double ll = 0;
+		// concordance/discordance metaphor from smolensky or one of those 80's neural network people
+		double discordance = 0;
 		for (int i=0; i<D; i++) {
 			for (int j=0; j<D; j++) {
-				ll += prec[i][j] * (x[i]-mean[i]) * (x[j]-mean[j]);
+				discordance += prec[i][j] * (x[i]-mean[i]) * (x[j]-mean[j]);
 			}
 		}
-		assert ll >= 0;
-		return ll * -0.5;
+		assert discordance >= 0 : "precision matrix not positive semidefinite!";
+		return discordance * -0.5;
 	}
 	
 	/** univariate normal density N(x | mean, var) */
@@ -65,6 +84,18 @@ public class Util {
 			lp += normalLL(x[k], mean[k], vars[k]);
 		}
 		return lp;
+	}
+	
+	/**
+	 * NOTE this is DIFFERENT than MVNormal in that you give the VARIANCE!  NOT THE PRECISION!
+	 * specifically, the diagonal of the covar matrix.
+	 */
+	public static double[] normalDiagSample(double[] mean, double[] vars, FastRandom rand) {
+		double[] ret = new double[mean.length];
+		for (int k=0; k < mean.length; k++) {
+			ret[k] = rand.nextGaussian(mean[k], vars[k]);
+		}
+		return ret;
 	}
 
 //	public static void main(String[] args) {
@@ -327,7 +358,8 @@ public class Util {
 	}
 	
 	/** adapted from Tom Minka's lightspeed library
-	 *  Requires: n >= 0 **/
+	 * but in java it doesn't seem to be any fancer than pochhammer_slow().
+	 * Requires: n >= 0 **/
 	static double pochhammer_fancy(double x, int n) {
 	  double result;
 	  int i;
@@ -360,7 +392,7 @@ public class Util {
 	    return SloppyMath.lgamma(x+n) - SloppyMath.lgamma(x);
 	}
 	static double pochhammer(double x, int n) {
-		return pochhammer_slow(x,n);
+	    return SloppyMath.lgamma(x+n) - SloppyMath.lgamma(x);
 	}
 	static double pochhammer(double x, double n) {
 		return SloppyMath.lgamma(x+n) - SloppyMath.lgamma(x);

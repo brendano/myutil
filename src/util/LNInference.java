@@ -103,7 +103,7 @@ public class LNInference {
 	
 	/** covar = [-H(logpost)]^-1
 	 * and here we use the diagonalized hessian, thus diag covar is simple.
-	 * (technical note, this is NOT the diag covar of the full MV laplace approx.)
+	 * (technical note, this is NOT the diag covar of the full MVN approx.)
 	 */
 	static double[] calcEtaLaplaceDiagVar(double[] etaMode,
 			double counts[], double totalCount, double etaMean[], double etaVar[]) {
@@ -388,7 +388,7 @@ public class LNInference {
 	 * where NewValue is 'null' if not accepted.
 	 * (for Hoff 2003 approach)
 	 */
-	public static Pair<Boolean,double[]> sampleOneMH(double[] oldEta,
+	public static OneMH sampleOneMH(double[] oldEta,
 			final double[] counts, final double totalCount,
 			final double[] etaMean, final double[] etaVar,
 			FastRandom rand)
@@ -399,17 +399,25 @@ public class LNInference {
 		final double[] approxVar = calcEtaLaplaceDiagVar(etaMode, counts, totalCount, etaMean, etaVar);
 		// Take the proposal and consider it.
 		// q(x|.) doesn't depend on RHS, so it's really just q(x) versus q(x')
-		double[] newEta = sampleDiagMV(etaMode, approxVar, rand);
+		double[] newEta = Util.normalDiagSample(etaMode, approxVar, rand);
 		double lq_new = Util.normalDiagLL(newEta, etaMode, approxVar);
 		double lq_old = Util.normalDiagLL(oldEta, etaMode, approxVar);
 		double lp_new = calcUnnormLogprob(newEta, counts, etaMean, etaVar);
 		double lp_old = calcUnnormLogprob(oldEta, counts, etaMean, etaVar);
+		// NOTE could speed up last calculation by passing in the precomputed old theta
+		
 		double lalpha = lp_new-lp_old + lq_old-lq_new;
 		if (lalpha >= 0 || rand.nextUniform() < Math.exp(lalpha)) {
-			return U.pair(true, newEta);
+			return new OneMH(true, newEta);
 		} else {
-			return U.pair(false, null);
+			return new OneMH(false, null);
 		}
+	}
+	
+	public static class OneMH {
+		public boolean wasAccepted;
+		public double[] newValue;
+		public OneMH(boolean a, double[] d) { wasAccepted=a; newValue=d; }
 	}
 	
 	static void oldTestStuff() {

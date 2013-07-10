@@ -15,8 +15,8 @@ public class GaussianInference {
 	/**
 	 * Sample a scalar variance from conjugate posterior, under scaled inverse chi-sq prior (i.e. inv wishart)
 	 * @param sumSqDev: sum (x_i - xbar)^2  (= [sum x_i^2] - [sum x_i]^2 )
-	 * @param priorVar: sigma_0^2 in Murphy 4.6.2.2 notation
-	 * @param priorStrength: nu_0 in Murphy 4.6.2.2 notation
+	 * @param priorVar: sigma_0^2 in Murphy 4.6.2.2 notation (prior value)
+	 * @param priorStrength: nu_0 in Murphy 4.6.2.2 notation (pseudocount for prior value)
 	 */
 	public static double samplePosteriorVariance(double sumSqDev, int N, double priorValue, double priorStrength, FastRandom rand) {
 		double postStrength = priorStrength + N;
