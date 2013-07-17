@@ -521,6 +521,14 @@ public class Arr {
 			}
 		}
 	}
+	public static void addInPlace(double[][] a, double b) {
+		for (int i = 0; i < a.length; i++) {
+			for (int j=0; j < a[0].length; j++) {
+				a[i][j] += b;
+			}
+		}
+	}
+	
 
 	/** Convert to a row-major vector representation. */
 	public static double[] convertToVector(double[][] mat) {
@@ -2035,6 +2043,17 @@ public class Arr {
 		  }
 		  return result;
 	  }
+	  
+	  /** added by BTO */
+	  public static double sum(double[][] a) {
+		  double result = 0;
+		  for (int i = 0; i < a.length; i++) {
+			  for (int j=0; j<a[i].length; j++) {
+				  result += a[i][j];
+			  }
+		  }
+		  return result;
+	  }
 
 	  /**
 	   * Returns diagonal elements of the given (square) matrix.
@@ -2614,6 +2633,15 @@ public class Arr {
 			  throw new RuntimeException("Can't normalize an array with sum 0.0 or NaN: " + Arrays.toString(a));
 		  }
 		  multiplyInPlace(a, 1.0/total); // divide each value by total
+	  }
+	  
+	  /** added by BTO */
+	  public static void normalize(double[][] a) {
+		  double total = sum(a);
+		  if (total == 0.0 || Double.isNaN(total)) {
+			  throw new RuntimeException("Can't normalize an array with sum 0.0 or NaN: " + Arrays.toString(a));
+		  }
+		  multiplyInPlace(a, 1.0/total); // divide each value by total		  
 	  }
 
 	  public static void L1normalize(double[] a) {
