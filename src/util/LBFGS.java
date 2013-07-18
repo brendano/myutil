@@ -691,7 +691,7 @@ public class LBFGS {
 			    double gnorm,
 			    double step,
 			    int n,
-			    int k,
+			    int iterNum,
 			    Status ls);
 	}
 	
