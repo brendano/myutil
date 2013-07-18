@@ -10,8 +10,12 @@ import com.google.common.base.Function;
 
 /**
  * Inference algorithms for first-order discrete sequence models.
- * Takes factor scores as inputs.  (It's your job to compute them.)
- * These are intended for: hmm, crf, memm, and other variants.
+ *   (1) Max inference (Viterbi)
+ *   (2) Marginal inference (Forward-Backward)
+ *   (3) TODO: Sampling inference (FB-Sampler)
+ *   
+ * These functions all take factor exp-potentials as inputs.  (It's your job to compute them.)
+ * Intended for: hmm, crf, memm, and other variants.
  * 
  * notation conventions
  * T: length of chain. t=0..(T-1)
@@ -19,12 +23,13 @@ import com.google.common.base.Function;
  * All factors are in exp space -- because we use per-timestep renormalization, which is much faster than log-space arithmetic.  See Rabiner 1989.
  * (Thus all factor inputs are non-negative.  we could use negative values for NA's or hard-constraint-zeros or something.)
  * 
- * We have no notion of special start or stop states.  you have to handle that yourself: build them into the first or last factor tables yourself.
+ * We have no notion of special start or stop states.  you have to handle that yourself: build their effects
+ * into the first or last factor tables yourself.
  * We have no notion of learning.  This might be a subroutine for that.
  * 
  * TESTS: uncomment the appropriate main() next to the relevant textX(), then from the "chains" subdir run:
  *     Rscript sim_chains.r && ../java.sh util.ChainInfer obsF transF
- * and look to make sure the dynamic programming algo agrees with the exhaustive solution.
+ * and look to make sure the dynamic programming algo agrees with the exhaustive solution, or that it doesn't crash, etc.
  * 
  * @author brendano
  */
@@ -274,7 +279,7 @@ VITERBI	[0, 1, 1, 1, 0]
 	}
 	
 	
-	/** P(y_t=k | x_(t+1):T) */ 
+	/** unnormalized (underflow-prone) P(y_t=k | x_(t+1):T) */ 
 	static ForwardOrBackwardTables backwardNoNormalization(double[][] obsFactors, double[][] transFactors) {
 		final int T = obsFactors.length;
 		final int K = obsFactors[0].length;
@@ -321,7 +326,9 @@ VITERBI	[0, 1, 1, 1, 0]
 	static final double DANGEROUSLY_LOW = 1e-100;
 	
 	/** Compute the final label marginals P(y_t=k | x_1:T), given the forward probs as input.
-	 * (Thus this function runs the backward algorithm internally) */
+	 * (Thus this function runs the backward algorithm internally)
+	 * This function hasn't been significantly tested. haven't thought through the implications of the conservative normalization strategy here.
+	 */
 	static double[][] marginalsFromForwardViaBackward(ForwardOrBackwardTables forwards, double[][] obsFactors, double[][] transFactors) {
 		final int T = obsFactors.length;
 		if (T==0) return new double[0][0];
