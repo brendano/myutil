@@ -24,20 +24,14 @@ import java.util.*;
  *  - StanfordNLP ArrayUtils
  *  - Java SDK 1.6 Arrays
  *  - some various new stuff, including matrix operations.
+ *  
+ * Newer vector/matrix routines are modeled after functions in R.
  * 
  * My safety convention: use "assert" to check preconditions, so only active under "-ea".
  * StanfordNLP sometimes checks and throws RuntimeExceptions.
  * 
  * TODO - this javadoc should have a structured overview of the different types of available methods
  * 
- * Also considering other interesting array libraries out there, to consider folding in, but will require design/refactoring
- * to be sensibly fitting-in-with the StanfordNLP functions.
- * Berkeley NLP has a bunch of good stuff
- * Apache Commons doesn't have much of interest
- * Mallet doesn't either
- * LingPipe might have something, but scary license
- * Lucene has a few neat things
- *
  * Since this class includes Stanford code, if this is released it has to be GPL?
  * 
  * @author brendano
@@ -116,6 +110,8 @@ public class Arr {
 	/**
 	 * Returns true if any element is a "very dangerous" double to have
 	 * around, namely one that is infinite or NaN.
+	 * 
+	 * BTO: I hate the name of this function; not changed from StanfordNLP
 	 */
 	public static boolean isVeryDangerous(double[][] mat) {
 		for (double[] row : mat)
@@ -126,6 +122,8 @@ public class Arr {
 	/**
 	 * Returns true if any element is a "very dangerous" double to have
 	 * around, namely one that is infinite or NaN.
+	 * 
+	 * BTO: I hate the name of this function; not changed from StanfordNLP
 	 */
 	public static boolean isVeryDangerous(double[][][] arr) {
 		for (double[][] mat : arr)
@@ -135,6 +133,12 @@ public class Arr {
 		return false;
 	}
 	
+	/** Read delimiter-separated vector of integers.  For example,
+	 *   "32 4 5 65 44"
+	 * with a space separator, or
+	 *   "32,4,5,65,44"
+	 * with a comma separator.
+	 */
 	public static int[] readIntVector(String payload, String sep) {
 		String[] parts = payload.split(sep);
 		int[] ret = new int[parts.length];
@@ -1571,7 +1575,7 @@ public class Arr {
 		 }
 		 return result;
 	 }
-
+	 
 	 public static double[] log(double[] a) {
 		 double[] result = new double[a.length];
 		 for (int i = 0; i < a.length; i++) {
