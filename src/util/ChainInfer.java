@@ -350,11 +350,11 @@ VITERBI	[0, 1, 1, 1, 0]
 		return marginals;
 	}
 	
-	static class Marginals {
+	public static class Marginals {
 		/** size T x K: p(y_t) */
-		double[][] labelMarginals;
+		public double[][] labelMarginals;
 		/** size (T-1) x K x K:  p(y_t, y_t+1) */
-		double[][][] pairMarginals;
+		public double[][][] pairMarginals;
 	}
 	
 	/**
