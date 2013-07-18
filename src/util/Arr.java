@@ -96,9 +96,18 @@ public class Arr {
 	public static boolean isFinite(double[][] mat) {
 		return !isVeryDangerous(mat);
 	}
+	/** like R all(is.finite(x)) */
+	public static boolean isFinite(double[][][] X) {
+		for (double[][] x : X) {
+			if (isVeryDangerous(x)) return false;
+		}
+		return true;
+	}
 	/**
 	 * Returns true if any element is a "very dangerous" double to have
 	 * around, namely one that is infinite or NaN.
+	 * 
+	 * BTO: I hate the name of this function; not changed from StanfordNLP
 	 */
 	public static boolean isVeryDangerous(double[] vec) {
 		for (double x : vec) if (SloppyMath.isVeryDangerous(x)) return true;
@@ -1585,6 +1594,50 @@ public class Arr {
 		 }
 	 }
 
+	 // operations on matrixes -- added by BTO
+	 
+	 /** added by BTO */
+	 public static double[][] exp(double[][] a) {
+		 if (a.length==0) return new double[0][0];
+		 double[][] result = new double[a.length][a[0].length];
+		 for (int i = 0; i < a.length; i++) {
+			 for (int j=0; j < a[0].length; j++) {
+				 result[i][j] = Math.exp(a[i][j]);
+			 }
+		 }
+		 return result;
+	 }
+	
+	 /** added by BTO */
+	 public static double[][] log(double[][] a) {
+		 if (a.length==0) return new double[0][0];
+		 double[][] result = new double[a.length][a[0].length];
+		 for (int i = 0; i < a.length; i++) {
+			 for (int j=0; j < a[0].length; j++) {
+				 result[i][j] = Math.log(a[i][j]);
+			 }
+		 }
+		 return result;
+	 }
+	 
+	 /** added by BTO */
+	 public static void expInPlace(double[][] a) {
+		 for (int i = 0; i < a.length; i++) {
+			 for (int j=0; j < a[i].length; j++) {
+				 a[i][j] = Math.exp(a[i][j]);
+			 }
+		 }
+	 }
+	
+	 /** added by BTO */
+	 public static void logInPlace(double[][] a) {
+		 for (int i = 0; i < a.length; i++) {
+			 for (int j=0; j < a[i].length; j++) {
+				 a[i][j] = Math.log(a[i][j]);
+			 }
+		 }
+	 }
+	 
 	 // OPERATIONS WITH SCALAR - DESTRUCTIVE
 
 	 /**
