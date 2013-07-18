@@ -399,4 +399,16 @@ VITERBI	[0, 1, 1, 1, 0]
 		return m;
 	}
 
+	/** just run it.  use T=big for a good test.
+	 * for T=10000 I get an error under backwardNoNormalization()
+	 * but no error under backward() (that has the renormalization) */
+	static void testUnderflows(String[] args) {
+		double[][] obsF = Arr.readDoubleMatrix(args[0]);
+		double[][] transF= Arr.readDoubleMatrix(args[1]);
+		Marginals m = forwardBackward(obsF,transF);
+		assert Arr.isFinite(m.labelMarginals);
+		assert Arr.isFinite(m.pairMarginals);
+	}
+//	public static void main(String[] args) { testUnderflows(args); }
+	
 }
