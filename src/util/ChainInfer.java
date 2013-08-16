@@ -4,9 +4,11 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Stack;
 
 import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 
 /**
  * Inference algorithms for first-order discrete sequence models.
@@ -322,6 +324,63 @@ VITERBI	[0, 1, 1, 1, 0]
 		return b;
 	}
 	
+	/** takes output of forward algo as input */
+	static int[] backwardSample(ForwardOrBackwardTables forwards, double[][] obsFactors, double[][] transFactors) {
+		int T = obsFactors.length;
+		int K = obsFactors[0].length;
+		int[] sample = new int[T];
+		double[] field = new double[K];
+		sample[T-1] = FastRandom.rand().nextDiscrete(forwards.probs[T-1]);
+		for (int t=T-2; t>=0; t--) {
+			Arr.fill(field,0);
+			double Z = 0;
+			for (int k=0; k<K; k++) {
+				int next = sample[t+1];
+				field[k] += obsFactors[t+1][next] * transFactors[k][next]  * forwards.probs[t][k];
+				Z += field[k];
+			}
+			sample[t] = FastRandom.rand().nextDiscrete(field, Z);
+		}
+		return sample;
+	}
+	
+	public static List<int[]> forwardBackwardSample(int nSamples, double[][] obs, double[][] trans) {
+		List<int[]> samples = Lists.newArrayList();
+		ForwardOrBackwardTables f = forward(obs,trans);
+		for (int s=0; s<nSamples; s++) {
+			int[] sample = backwardSample(f, obs, trans);
+			samples.add(sample);
+		}
+		return samples;
+	}
+	
+	static void testForwardBackwardSample(String args[]) {
+		double[][] obs = Arr.readDoubleMatrix(args[0]);
+		double[][] trans= Arr.readDoubleMatrix(args[1]);
+		int T=obs.length; int K=obs[0].length;
+		double[][] mar = forwardBackward(obs,trans).labelMarginals;
+		U.p("FB_MAR");
+		U.p(mar);
+		double[][] emar = new double[T][K];
+		int i=0;
+		int S = 10000;
+		for (int[] s : forwardBackwardSample(S, obs,trans)) {
+//			U.pf("S_%s\t", (++i));
+//			U.p(s);
+			for (int t=0; t<s.length; t++) {
+				emar[t][s[t]] += 1;
+			}
+		}
+		Arr.multiplyInPlace(emar, 1.0/S);
+		U.p("E_MAR");
+		U.p(emar);
+		
+		double[] diffs = Arr.pairwiseSubtract(Arr.flatten(mar), Arr.flatten(emar));
+		double meandiff = Arr.mean(Arr.abs(diffs));
+		U.p("meandiff " + meandiff);
+	}
+	public static void main(String args[]) { testForwardBackwardSample(args); }
+
 	
 	static final double DANGEROUSLY_LOW = 1e-100;
 	
