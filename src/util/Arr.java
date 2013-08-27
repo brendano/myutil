@@ -680,6 +680,18 @@ public class Arr {
 			a[i] *= b[i];
 		}
 	}
+	
+	//////  Fairly minor convenience converters  /////
+	
+	public static String[] toStringArray(List<String> x) {
+		return x.toArray(new String[0]);
+	}
+	public static int[] toIntArray(List<Integer> x) {
+		return toPrimitive(x.toArray(new Integer[0]));
+	}
+	public static double[] toDoubleArray(List<Double> x) {
+		return toPrimitive(x.toArray(new Double[0]));
+	}
 
 
 	//////////// EXTERNAL from edu.stanford.nlp.math.SloppyMath   //////////////////////

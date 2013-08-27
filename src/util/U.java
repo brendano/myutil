@@ -9,10 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
+import util.misc.Pair;
+import util.misc.Triple;
 
-import edu.stanford.nlp.util.Pair;
+
 import edu.stanford.nlp.util.StringUtils;
-import edu.stanford.nlp.util.Triple;
 
 /** misc utilities & convenience wrappers **/
 public class U {
@@ -23,8 +24,8 @@ public class U {
 	}
 
 	/** static creator so don't have to specify types **/
-	public static <S,T,U> Triple<S,T,U> triple(S o1, T o2, U o3) {
-		return new Triple<S,T,U>(o1, o2, o3);
+	public static <S,T,V> Triple<S,T,V> triple(S o1, T o2, V o3) {
+		return new Triple<S,T,V>(o1, o2, o3);
 	}
 	
 	public static final String ANSI_RESET 	= "\u001B[0m";

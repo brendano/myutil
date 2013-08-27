@@ -28,6 +28,10 @@ public class JsonUtil {
 		U.p(x);
 	}
 	
+	public static String getTextDefault(JsonNode ob, String keyname, String defaultValue) {
+		return ob.has(keyname) ? ob.get(keyname).asText() : defaultValue;
+	}
+	
 	//////////////////////////////////////
 	
 	// toList() derived from
@@ -133,5 +137,14 @@ public class JsonUtil {
 	public static JsonNode readJson(String jsonStr) throws JsonProcessingException, IOException {
 		return om.readTree(jsonStr);
 	}
-	
+
+	public static JsonNode readJsonNX(String jsonStr) {
+		try {
+			return om.readTree(jsonStr);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
 }
