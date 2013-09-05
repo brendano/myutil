@@ -41,14 +41,26 @@ import util.Vocabulary;
  * 
  */
 public class LDA {
+
+	double docConc = 0.1;   // "alpha"
+	double wordConc = 100;  // "beta"
+	
+	static class Opts {
+		static String dataFilename = "data/docwords.txt";
+		static String outputDir = "out";
+		static int maxIter = 100000 + 1;
+		static int saveEvery = 1000;
+		static int concResampleEvery = 100;
+	}
+	
+	int numTopics = 5;
+	int numWordTypes = -1;
+
 	// docid and wordtype vocabularies
 	Vocabulary wordVocab;
 	Vocabulary docVocab;
 	
 	ArrayList<Tuple> dataTuples;
-	
-	int numTopics = 5;
-	int numWordTypes = -1;
 	
 	// CGS token count tables
 	double[][] nDocTopic;
@@ -60,24 +72,12 @@ public class LDA {
 	// the z's
 	int[] tokenClasses;
 	
-	double docConc = 0.1;   // "alpha"
-	double wordConc = 100;  // "beta"
-	
 	static class Tuple {
 		int docid;
 		int wordid;
-//		Tuple(int d, int w) { docid=d; wordid=w; }
 	}
 	
 	FastRandom rand = new FastRandom();
-	
-	static class Opts {
-		static String dataFilename = "data/docwords.txt";
-		static String outputDir = "out";
-		static int maxIter = 5000 + 1;
-		static int saveEvery = 100;
-		static int concResampleEvery = 100;
-	}
 	
 	public LDA() {
 		wordVocab = new Vocabulary();

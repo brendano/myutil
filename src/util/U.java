@@ -47,6 +47,7 @@ public class U {
 	public static void p(Object x) { System.out.println(x); }
 	public static void p(String[] x) { p(Arrays.toString(x)); }
 	public static void p(double[] x) { p(Arrays.toString(x)); }
+	public static void p(float[] x) { p(Arrays.toString(x)); }
 	public static void p(int[] x) { p(Arrays.toString(x)); }
 	public static void p(double[][] x) {
 		System.out.printf("(%s x %s) [\n", x.length, x[0].length);

@@ -24,8 +24,6 @@ import edu.stanford.nlp.ling.CoreAnnotations.*;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.trees.TreeCoreAnnotations.TreeAnnotation;
-import edu.stanford.nlp.trees.semgraph.SemanticGraph;
-import edu.stanford.nlp.trees.semgraph.SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation;
 import edu.stanford.nlp.util.*;
 
 /**
@@ -50,7 +48,7 @@ import edu.stanford.nlp.util.*;
 public class RunStanford {
 	
 	static enum Mode {
-		SSPLIT, SHALLOW, FULL;
+		SSPLIT, SHALLOW, PARSE, FULL;
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -58,6 +56,7 @@ public class RunStanford {
 		Mode mode = 
 			_mode.equals("ssplit") ? Mode.SSPLIT :
 			_mode.equals("shallow") ? Mode.SHALLOW :
+			_mode.equals("parse") ? Mode.PARSE :
 			_mode.equals("full") ? Mode.FULL : 
 			null;
 		if (mode==null) throw new RuntimeException("bad mode");
@@ -78,6 +77,9 @@ public class RunStanford {
 	    else if (mode == Mode.SHALLOW) { 
 	    	props.put("annotators", "tokenize, ssplit, pos, lemma, ner");
 	    }
+	    else if (mode == Mode.PARSE) {
+	    	props.put("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
+	    }
 	    else if (mode == Mode.FULL) {
 	    	props.put("annotators", "tokenize, ssplit, pos, lemma, ner, parse, dcoref");
 	    }
@@ -95,7 +97,7 @@ public class RunStanford {
 			if (mode == Mode.SSPLIT) {
 				textInput = JsonUtil.parse(inrow[inputInd]).asText();
 			}
-			else if (mode == Mode.FULL || mode == Mode.SHALLOW){
+			else if (mode == Mode.FULL || mode == Mode.SHALLOW || mode==Mode.PARSE){
 				List<String> sentTokenizedTexts = Lists.newArrayList();
 				JsonNode node = JsonUtil.parse(inrow[inputInd]);
 				int n = node.size();
@@ -117,7 +119,7 @@ public class RunStanford {
 	    		String output = createSentenceOutput(document);
 	    		System.out.println(output);
 	    	}
-	    	else if (mode == Mode.FULL || mode == Mode.SHALLOW) {
+	    	else if (mode==Mode.FULL || mode==Mode.PARSE || mode==Mode.SHALLOW) {
 //	    		pipeline.xmlPrint(document, System.out);
 	    		
 	    		Document xmldoc = XMLOutputter.annotationToDoc(document, pipeline);

@@ -480,6 +480,12 @@ public class Arr {
 		System.arraycopy(a, from, result, 0, to-from);
 		return result;
 	}
+	
+	public static float[] subArray(float[] a, int from, int to) {
+		float[] result = new float[to-from];
+		System.arraycopy(a, from, result, 0, to-from);
+		return result;
+	}
 
 	public static String[] subArray(String[] a, int from, int to) {
 		String[] result = new String[to-from];
