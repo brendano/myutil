@@ -2,7 +2,8 @@ by Brendan O'Connor, http://brenocon.com
 
 Java utilities for statistics/machinelearning and various supporting tools.
 (Often intended for NLP applications, though not much NLP in this library.)
-This needs a better name; it is "myutil", https://github.com/brendano/myutil
+This needs a better name; currently it's "myutil",
+https://github.com/brendano/myutil
 
 The idea is to be a library of functions for well-known algorithms, as opposed
 to a grand ML/NLP framework, because those are never as useful as one would
@@ -14,21 +15,25 @@ If there are comments with a testing procedure, that may be a good sign.
 # Stuff in here
 
 Math/stats/opt things:
-* Arr.java: lots of array/matrix math and manipulation utilities.  Unlike COLT
-or JAMA, uses the more natural Java arrays and array-of-arrays representations.
-Also includes all Java standard library methods, because I can't remember which
-class is which.
+* Arr.java: lots of array/matrix math and manipulation utilities.  Unlike Colt
+  or Jama, uses the more natural Java arrays and array-of-arrays
+  representations.  Also includes all Java standard library methods, because I
+  can't remember which class is which.
 * MCMC.java: generic MCMC algorithms: Slice sampling, Metropolis-Hastings
-* LibLBFGS: a port of LibLBFGS to Java.  Seems to behave similarly as Stanford's OWLQN port, but it's more efficient.
-* FastRandom: a random number generator that's 10 times faster than the Java standard library's.
-* GaussianInference: conjugate posterior inference (exact and sampling) for Gaussian scalars, linear regression, and DLM's (Kalman filter, smoother, FFBS)
+* LibLBFGS: a port of LibLBFGS to Java.  Seems to behave similarly as
+  Stanford's OWLQN port, but it's more efficient.
+* FastRandom: a random number generator that's 10 times faster than the Java
+  standard library's.
+* GaussianInference: conjugate posterior inference (exact and sampling) for
+  Gaussian scalars, linear regression, and DLM's (Kalman filter, smoother,
+  FFBS)
 * MVNormal2: linear algebra inference and samplers for multivariate normals
   (ported from Mallet)
 * LNInference: logistic normal MAP and samplers
 * ChainInfer.java: discrete chain inference: Viterbi, forward-backward, FFBS
-* Online algorithms: Vitte reservoir sampling (ReservoirSampler), and Welford
+* Online algorithms: Vitter reservoir sampling (ReservoirSampler), and Welford
   running mean/variance (OnlineNormal1d(Weighted))
-* Util.java: math/stats functions
+* Util.java: some other math/stats functions
 
 Non-math-y things:
 * ThreadUtil: basically ThreadPool wrappers for divide-and-conquer workloads
