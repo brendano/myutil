@@ -226,7 +226,8 @@ public class Parse {
 	        }
 	        
 	        Map outDoc = new ImmutableMap.Builder()
-	        	.put("text", doctext).put("sentences", outSentences)
+//	        	.put("text", doctext)
+	        	.put("sentences", outSentences)
 	        	.build();
 	        
 	        U.pf("%s\t%s\n", docid, JsonUtil.toJson(outDoc));
