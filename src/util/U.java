@@ -57,6 +57,14 @@ public class U {
 		}
 		p("]");
 	}
+	public static void p(int[][] x) {
+		System.out.printf("(%s x %s) [\n", x.length, x[0].length);
+		for (int[] row : x) {
+			System.out.printf(" ");
+			p(Arrays.toString(row));
+		}
+		p("]");
+	}
 	public static String sp(double[] x) {
 		ArrayList<String> parts = new ArrayList<String>();
 		for (int i=0; i < x.length; i++)

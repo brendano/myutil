@@ -36,6 +36,8 @@ Nword = word_topics.sum(1)
 topiccounts = np.loadtxt(fname("nTopic"))
 Ntopic = word_topics.shape[1]
 
+word_counts = word_topics.sum(1)
+
 word_vocab = os.path.join(os.path.dirname(prefix), "word.vocab")
 word_vocab = np.array([x.strip() for x in open(word_vocab)])
 
@@ -55,7 +57,8 @@ print "<tbody>"
 print
 
 for k in topicorder:
-    top_words = (-word_topics[:,k]).argsort()
+    # top_words = (-word_topics[:,k]).argsort()
+    top_words = (-word_topics[:,k]*1.0/word_counts).argsort()
     # top_words = (-word_topics[:,k]/Nword).argsort()
     top_words = top_words[ word_topics[top_words,k] >= wc_thresh]
     top_words = top_words[:30]
