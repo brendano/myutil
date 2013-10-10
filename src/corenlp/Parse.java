@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.codehaus.jackson.JsonNode;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -36,7 +38,7 @@ import edu.stanford.nlp.semgraph.SemanticGraphEdge;
  * Commandline runner for CoreNLP with JSON output.
  * 
  * INPUT: one line per document.
- *  	docid \t TextAsJsonString 
+ *  	docid \t TextAsJsonStringOrObjectWithTextField 
  *  
  *  OUTPUT: as JSON, one doc per line ("jdoc").
  *    docid \t {sentences: [ {sentobj}, {sentobj}, ... ]}
@@ -177,7 +179,13 @@ public class Parse {
 	    	numDocs++; System.err.print(".");
 	    	String[] parts = line.split("\t");
 	    	String docid = parts.length >= 2 ? parts[0] : "doc" + numDocs;
-	    	String doctext = JsonUtil.parse(parts[parts.length-1]).asText();
+	    	JsonNode payload =JsonUtil.parse(parts[parts.length-1]);
+	    	String doctext = 
+	    			payload.isTextual() ? payload.asText() :
+	    			payload.has("text") ? payload.get("text").asText() :
+    				null;
+	    	if (doctext == null) throw new RuntimeException("Couldn't interpret JSON payload: should be string, or else object with a 'text' field.");
+	    		
 	    	Annotation document = new Annotation(doctext);
 	    	pipeline.annotate(document);
 	    	
