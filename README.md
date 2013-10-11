@@ -48,7 +48,9 @@ NLP things:
 * corenlp/: runners for Stanford CoreNLP that work with JSON or XML-based
   one-line-per-document formats.  Once you have thousands of documents, these
   formats are typically much faster to deal with than CoreNLP's
-  one-document-per-file strategy.  They're more Hadoop-friendly too.
+  one-document-per-file strategy.  They're more Hadoop-friendly too.  To use
+  these, need to drop in the model file (stanford-corenlp-3.2.0-models.jar)
+  into lib/stanford_extras
 
 Example models:
 * In the root package, example implementation of CGS LDA. When working
