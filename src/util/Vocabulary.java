@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import util.BasicFileIO;
 
@@ -73,6 +74,11 @@ public class Vocabulary implements Serializable {
 		int n = num(string);
 		if (n == -1) throw new RuntimeException("OOV happened");
 		return n;
+	}
+	
+	/** please don't modify this return value, will cause problems */
+	public List<String> names() {
+		return num2name;
 	}
 	
 	public void dump(String filename) throws IOException {
