@@ -11,7 +11,7 @@ import org.codehaus.jackson.node.*;
 
 import com.google.common.collect.Multiset;
 
-import edu.stanford.nlp.util.Pair;
+import util.misc.Pair;
 
 /** simplified wrapper functions for the Jackson JSON library 
  * this is half-baked, still learning the right way to use the library
