@@ -62,8 +62,10 @@ public class Parse {
 	static void usage() {
 		U.p("runstanford.Parse OUTPUTMODE\n" +
 				"Processes one document per stdin line, either\n" +
-				"  one column:   TextAsJsonString\n" +
-				"  two columns:  docid \\t TextAsJsonString\n" +
+				"  one column:   TextAsJson\n" +
+				"  two columns:  docid \\t TextAsJson\n" +
+				"... where TextAsJson could be a JSON string, or it could be a JSON object with field 'text'.\n" +
+				"In all cases, the output mode is two-column: docid \\t NLPInfoAsJson\n" +
 				"You must supply an OUTPUTMODE, which is one of:\n" +
 				"  ssplit:     tokenization and sentence splitting (included in all subsequent ones)\n" +
 				"  pos:        POS (and lemmas)\n" +
@@ -178,8 +180,11 @@ public class Parse {
 	    for (String line : BasicFileIO.STDIN_LINES) {
 	    	numDocs++; System.err.print(".");
 	    	String[] parts = line.split("\t");
-	    	String docid = parts.length >= 2 ? parts[0] : "doc" + numDocs;
 	    	JsonNode payload =JsonUtil.parse(parts[parts.length-1]);
+	    	String docid = parts.length >= 2 ? parts[0] : 
+	    							payload.has("docid") ? payload.get("docid").getTextValue() :
+	    							"doc" + numDocs;
+			assert docid != null : "inconsistent 'docid' key";
 	    	String doctext = 
 	    			payload.isTextual() ? payload.asText() :
 	    			payload.has("text") ? payload.get("text").asText() :
