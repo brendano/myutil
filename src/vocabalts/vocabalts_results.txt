@@ -1,7 +1,8 @@
 Alternative vocabulary comparisons
 ==================================
 
-Alternative implementations of the vocabulary data structure, which maintains a name=>integer mapping.
+Alternative implementations of the vocabulary data structure, which maintains
+a name=>integer mapping.
 
 Best configuration vs naive configuration: 47% savings
  - best = UTF-8 bytestring + GNU Trove
@@ -10,8 +11,8 @@ Best configuration vs naive configuration: 47% savings
 UTF-8 bytestring vs Java string: 21% memory savings
 Trove vs Java HashMap: 26% memory savings
 
-Task: read in 3 million feature names from an old version of the edge-logit parser.
-Results are medians from 3 trials each.
+Task: read in 3 million feature names from an old version of the edge-logit
+parser.  Results are medians from 3 trials each.
 Memory usage was calculated by first GC'ing, then MemoryMXBean's "used memory" quantity.
 
 Times are in seconds, and fairly approximate: min/max is +/- 0.5 seconds or so.
@@ -27,13 +28,26 @@ Memory usage was very tight across trials, +/- 100K or so.
 | ByteString  | Trove    | 259419  | 6.9   |
 | ByteString  | Fastutil | 281314  | 6.8   |
 
-A Java String's internal representation is one of the 2-byte Unicode encodings (either UTF-16 or UCS-2 or something?), so on ASCII or Latin-heavy text, UTF-8 should take less storage.  The bytestring is a very light wrapper around a byte array holding a UTF-8 encoding of the original string.
+A Java String's internal representation is one of the 2-byte Unicode encodings
+(either UTF-16 or UCS-2 or something?), so on ASCII or Latin-heavy text, UTF-8
+should take less storage.  The bytestring is a very light wrapper around a
+byte array holding a UTF-8 encoding of the original string.
 
 GNU Trove (3.0.3) TObjectIntHashMap: http://trove.starlight-systems.com/
 Fastutil (6.4.6) Object2IntOpenHashMap: http://fastutil.di.unimi.it/
 Experiments on Java 8.
 
-I also tried some Patricia Trie libraries, but, surprisingly, they weren't better than the Trove map.  Theoretically a PAT trie should be better since it can memorize shared substrings (and thus get at the manual string-tuple decomposition technique that Nathan uses, which is automatic in Python, to get big memory savings for conjunction features).  I tried https://github.com/rkapsi/patricia-trie and https://github.com/rkapsi/simple-patricia-trie; also http://code.google.com/p/concurrent-trees/ but that was very inefficient.  A C++ trie implementation, http://code.google.com/p/marisa-trie/ , reports extremely good memory results (better than gzip!); there appears to exist Java bindings, but no Java port.
+I also tried some Patricia Trie libraries, but, surprisingly, they weren't
+better than the Trove map.  Theoretically a PAT trie should be better since it
+can memorize shared substrings (and thus get at the manual string-tuple
+decomposition technique that Nathan uses, which is automatic in Python, to get
+big memory savings for conjunction features).  I tried
+https://github.com/rkapsi/patricia-trie and
+https://github.com/rkapsi/simple-patricia-trie; also
+http://code.google.com/p/concurrent-trees/ but that was very inefficient.  A
+C++ trie implementation, http://code.google.com/p/marisa-trie/ , reports
+extremely good memory results (better than gzip!); there appears to exist Java
+bindings, but no Java port.
 
 Commands were e.g.
 ~/myutil % for i in 1 2 3; time ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt
