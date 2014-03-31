@@ -15,7 +15,7 @@ Results are medians from 3 trials each.
 Memory usage was calculated by first GC'ing, then MemoryMXBean's "used memory" quantity.
 
 Times are in seconds, and fairly approximate: min/max is +/- 0.5 seconds or so.
-Memory usage was very right across trials, +/- 100K or so.
+Memory usage was very tight across trials, +/- 100K or so.
 
 |  string     |   map    | K used  | time  |
 |------------------------------------------|
