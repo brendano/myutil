@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,43 +23,44 @@ import util.BasicFileIO;
  * 
  * Empirical comparison.
  * Task: load ~3million feature vocab (English data).  5 trials per setting.
- * Memory reporting below with Runtime.totalMemory(), which is smaller than the OS process size, but presumably is a better measurement.
  
-Java String keys with HashMap:
-Mem usage 644.0 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.42s user 0.43s system 101% cpu 12.689 total
-Mem usage 644.5 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.35s user 0.44s system 101% cpu 12.610 total
-Mem usage 646.1 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.45s user 0.44s system 101% cpu 12.721 total
-Mem usage 646.3 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.39s user 0.43s system 101% cpu 12.640 total
-Mem usage 644.3 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.51s user 0.42s system 101% cpu 12.755 total
+java 1.8
+ 
+== Java String keys with HashMap ==
+  init = 134217728(131072K) used = 501040456(489297K) committed = 547880960(535040K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  20.42s user 0.47s system 179% cpu 11.643 total
+  init = 134217728(131072K) used = 501011664(489269K) committed = 612892672(598528K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  23.45s user 0.49s system 180% cpu 13.259 total
+  init = 134217728(131072K) used = 501040240(489297K) committed = 548929536(536064K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  20.36s user 0.43s system 178% cpu 11.656 total
 
-Java String keys, TObjectIntHashMap, Trove 3.0.3
-Mem usage 539.0 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  6.95s user 0.40s system 102% cpu 7.146 total
-Mem usage 539.1 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  6.92s user 0.39s system 102% cpu 7.099 total
-Mem usage 539.4 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  6.83s user 0.38s system 102% cpu 7.008 total
-Mem usage 547.6 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  6.97s user 0.38s system 102% cpu 7.146 total
-Mem usage 549.8 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  7.00s user 0.38s system 102% cpu 7.190 total
+== Java String keys, TObjectIntHashMap, Trove 3.0.3 ==
+  init = 134217728(131072K) used = 369319792(360663K) committed = 433586176(423424K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  10.55s user 0.38s system 165% cpu 6.610 total
+  init = 134217728(131072K) used = 368895040(360249K) committed = 401080320(391680K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  12.23s user 0.37s system 166% cpu 7.580 total
+  init = 134217728(131072K) used = 369396088(360738K) committed = 463994880(453120K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  10.78s user 0.38s system 163% cpu 6.832 total
 
-Java String keys, Object2IntOpenHashMap, fastutil 6.4.6
-Mem usage 550.4 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  8.01s user 0.37s system 102% cpu 8.198 total
-Mem usage 551.0 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  7.87s user 0.37s system 102% cpu 8.045 total
-Mem usage 551.2 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  7.88s user 0.37s system 102% cpu 8.045 total
-Mem usage 576.8 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  8.10s user 0.38s system 102% cpu 8.293 total
-Mem usage 578.3 MB ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  8.01s user 0.37s system 102% cpu 8.182 total
+== Java String keys, Object2IntOpenHashMap, fastutil 6.4.6 ==
+  init = 134217728(131072K) used = 392080048(382890K) committed = 503840768(492032K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  9.97s user 0.36s system 161% cpu 6.400 total
+  init = 134217728(131072K) used = 391759608(382577K) committed = 519045120(506880K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  11.24s user 0.36s system 163% cpu 7.077 total
+  init = 134217728(131072K) used = 391973248(382786K) committed = 505413632(493568K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithString src/vocabalts/featnames.txt  10.67s user 0.36s system 163% cpu 6.756 total
 
  */
 public class VocabWithString {
 
-//	private Object2IntMap<String> name2num;
-//	private TObjectIntHashMap<String> name2num;
-	private HashMap<String,Integer> name2num;
+	private TObjectIntHashMap<String> name2num= new TObjectIntHashMap<String>();
+//	private Object2IntMap<String> name2num = new Object2IntOpenHashMap<String>();
+//	private HashMap<String,Integer> name2num = new HashMap<String,Integer>();
 	private ArrayList<String> num2name;
 
 	private boolean isLocked = false;
 
 	public VocabWithString() { 
-		name2num = new HashMap<String,Integer>();
-//		name2num = new Object2IntOpenHashMap<String>();
-//		name2num = new TObjectIntHashMap<String>();
 		num2name = new ArrayList<>();
 	}
 
@@ -126,13 +128,14 @@ public class VocabWithString {
 	}
 	
 	public static void main(String[] args) throws IOException {
+//		ManagementFactory.getMemoryMXBean().setVerbose(true);
+		
 		VocabWithString vocab = new VocabWithString();
 		for (String line : BasicFileIO.openFileLines(args[0])) {
 			vocab.num(line);
 		}
 		System.gc();
-		System.out.printf("Mem usage %.1f MB\n", Runtime.getRuntime().totalMemory()/1e6);
-
+		System.out.println(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage());
 //		System.out.print("> ");
 //		System.in.read();
 	}

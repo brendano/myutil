@@ -1,12 +1,12 @@
 package vocabalts;
 
 import gnu.trove.map.hash.TObjectIntHashMap;
-
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,43 +17,53 @@ import util.BasicFileIO;
 
 
 /**
-ByteString, HashMap
-Mem usage 768.2 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  14.56s user 0.48s system 101% cpu 14.821 total
-Mem usage 810.6 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  15.22s user 0.47s system 101% cpu 15.462 total
-Mem usage 808.4 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  15.09s user 0.47s system 101% cpu 15.323 total
-Mem usage 809.6 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  15.26s user 0.47s system 101% cpu 15.509 total
-Mem usage 813.1 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  15.39s user 0.50s system 101% cpu 15.682 total
 
-ByteString, TObjectIntHashMap (Trove 3.0.3)
-Mem usage 528.9 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.42s user 0.38s system 103% cpu 8.494 total
-Mem usage 530.9 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.07s user 0.36s system 103% cpu 8.133 total
-Mem usage 532.6 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.05s user 0.36s system 103% cpu 8.104 total
-Mem usage 534.7 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.04s user 0.37s system 103% cpu 8.100 total
-Mem usage 535.0 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.07s user 0.36s system 103% cpu 8.110 total
+Results: 47% memory reduction for Trove bytestring, versus naive HashMap java String. 
 
-ByteString, Object2IntOpenHashMap (fastutil 6.4.6)
-Mem usage 565.8 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.58s user 0.38s system 102% cpu 8.712 total
-Mem usage 566.4 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.56s user 0.38s system 102% cpu 8.705 total
-Mem usage 570.7 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.63s user 0.38s system 102% cpu 8.780 total
-Mem usage 577.0 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.43s user 0.39s system 102% cpu 8.580 total
-Mem usage 578.0 MB ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  8.49s user 0.43s system 102% cpu 8.690 total
+Implementation strategy: use UTF-8 encoded byte arrays as keys.
+So for an ASCII-heavy dataset, the string payload data would be twice as small as using String keys (since Java uses a 2-byte encoding internally).
+This comes out to a 30% reduction in size: compare results against VocabWithString.
 
+Speed/memory results, java 1.8.  
+'used' memory is what matters.  
+Trove looks best, though fastutil is only barely worse.
 
+== ByteString, HashMap ==
+  init = 134217728(131072K) used = 397088920(387782K) committed = 544735232(531968K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  20.29s user 0.44s system 177% cpu 11.667 total
+  init = 134217728(131072K) used = 397107888(387800K) committed = 541065216(528384K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  20.59s user 0.41s system 179% cpu 11.709 total
+  init = 134217728(131072K) used = 397157280(387848K) committed = 542113792(529408K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  21.41s user 0.44s system 174% cpu 12.500 total
+
+== ByteString, TObjectIntHashMap (Trove 3.0.3) ==
+  init = 134217728(131072K) used = 265834400(259603K) committed = 495452160(483840K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  10.54s user 0.36s system 153% cpu 7.111 total
+  init = 134217728(131072K) used = 265599992(259374K) committed = 470810624(459776K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  9.48s user 0.35s system 155% cpu 6.308 total
+  init = 134217728(131072K) used = 265645224(259419K) committed = 440926208(430592K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  10.21s user 0.35s system 152% cpu 6.942 total
+
+== ByteString, Object2IntOpenHashMap (fastutil 6.4.6) ==
+  init = 134217728(131072K) used = 288066192(281314K) committed = 468713472(457728K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  10.15s user 0.41s system 149% cpu 7.061 total
+  init = 134217728(131072K) used = 288304744(281547K) committed = 488112128(476672K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  9.82s user 0.40s system 149% cpu 6.828 total
+  init = 134217728(131072K) used = 288011832(281261K) committed = 479723520(468480K) max = 3817865216(3728384K)
+  ./java.sh vocabalts.VocabWithByteString src/vocabalts/featnames.txt  9.88s user 0.36s system 149% cpu 6.843 total
 
  */
 public class VocabWithByteString {
 
-//	private HashMap<ByteString, Integer> name2num;
-//	private TObjectIntHashMap<ByteString> name2num;
-	private Object2IntMap<ByteString> name2num;
+	private TObjectIntHashMap<ByteString> name2num = new TObjectIntHashMap<>();
+//	private Object2IntMap<ByteString> name2num = new Object2IntOpenHashMap<>();
+//	private HashMap<ByteString, Integer> name2num = new HashMap<>();
+	
 	private ArrayList<ByteString> num2name;
 
 	private boolean isLocked = false;
 
 	public VocabWithByteString() { 
-//		name2num = new HashMap<>();
-//		name2num = new TObjectIntHashMap<>();
-		name2num = new Object2IntOpenHashMap<>();
 		num2name = new ArrayList<>();
 	}
 
@@ -110,7 +120,6 @@ public class VocabWithByteString {
 		return n;
 	}
 	
-	/** please don't modify this return value, will cause problems */
 	public List<String> names() {
 		ArrayList<String> ret = new ArrayList<>();
 		for (ByteString s : num2name)  ret.add(decodeUTF8(s.data));
@@ -140,7 +149,7 @@ public class VocabWithByteString {
 			vocab.num(line);
 		}
 		System.gc();
-		System.out.printf("Mem usage %.1f MB\n", Runtime.getRuntime().totalMemory()/1e6);
+		System.out.println(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage());
 
 	}
 
