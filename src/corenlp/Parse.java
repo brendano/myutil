@@ -12,10 +12,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import util.Arr;
 import util.BasicFileIO;
 import util.JsonUtil;
 import util.U;
-
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.NamedEntityTagAnnotation;
@@ -59,13 +59,16 @@ public class Parse {
 		FULLPARSE;
 	}
 	
+	static enum InputFormat {
+		DETECT_JSON_VARIANT,
+		RAW_TEXT
+	};
+	
 	static void usage() {
-		U.p("runstanford.Parse OUTPUTMODE\n" +
-				"Processes one document per stdin line, either\n" +
-				"  one column:   TextAsJson\n" +
-				"  two columns:  docid \\t TextAsJson\n" +
-				"... where TextAsJson could be a JSON string, or it could be a JSON object with field 'text'.\n" +
-				"In all cases, the output mode is two-column: docid \\t NLPInfoAsJson\n" +
+		U.p("corenlp.Parse [options] OUTPUTMODE\n" +
+				"Processes document texts on and outputs NLP-annotated versions.\n" +
+				"Both input and output formats are one document per line.\n" +
+				"\n" +
 				"You must supply an OUTPUTMODE, which is one of:\n" +
 				"  ssplit:     tokenization and sentence splitting (included in all subsequent ones)\n" +
 				"  pos:        POS (and lemmas)\n" +
@@ -74,12 +77,33 @@ public class Parse {
 				"  medparse:   parsing with POS, lemmas, and dependencies (no NER)\n" +
 				"  fullparse:  parsing with NER, POS, lemmas, depenencies.\n" +
 				"              This is the maximum processing short of coreference.\n" +
+				"\n" +
+				"Input format can be either\n" +
+				"  one column:   TextField\n" +
+				"  two columns:  docid \\t TextField\n" +
+				"Where TextField could be either\n" +
+				"  * a JSON string, or\n" +
+				"  * a JSON object with field 'text'.\n" +
+				"--raw-input  allows the text field to be raw text, interpreted as UTF-8 encoded.\n" +
+				"Note that JSON strings can be preferable, since they can contain any type of whitespace.\n" +
+				"\n" +
+				"In all cases, the output mode is two-column: docid \\t NLPInfoAsJson\n" +
 				"");
 		System.exit(1);
 	}
 	public static void main(String[] args) {
 		if (args.length < 1) {
 			usage();
+		}
+		InputFormat inputFormat = InputFormat.DETECT_JSON_VARIANT;
+		
+		while (args.length > 1) {
+			String flag = args[0];
+			if (flag.equals("--raw-input")) {
+				inputFormat = InputFormat.RAW_TEXT;
+				args = Arr.subArray(args, 1, args.length);
+			}
+			else { throw new RuntimeException("bad flag: " + flag); }
 		}
 		String _mode = args[0];
 		ProcessingMode mode = 
@@ -94,7 +118,7 @@ public class Parse {
 			U.pf("Bad mode '%s'\n", _mode);
 			usage();
 		}
-		stuff(mode);
+		stuff(inputFormat, mode);
 	}
 
 	/////////////////////////////////////////////
@@ -164,7 +188,7 @@ public class Parse {
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static void stuff(ProcessingMode mode) {
+	public static void stuff(InputFormat inputFormat, ProcessingMode mode) {
 	    Properties props = new Properties();
 	    setAnnotators(props, mode);
 	    
@@ -180,15 +204,25 @@ public class Parse {
 	    for (String line : BasicFileIO.STDIN_LINES) {
 	    	numDocs++; System.err.print(".");
 	    	String[] parts = line.split("\t");
-	    	JsonNode payload =JsonUtil.parse(parts[parts.length-1]);
-	    	String docid = parts.length >= 2 ? parts[0] : 
-	    							payload.has("docid") ? payload.get("docid").getTextValue() :
-	    							"doc" + numDocs;
+	    	String docid, doctext;
+	    	JsonNode payload = null;
+	    	if (inputFormat == InputFormat.DETECT_JSON_VARIANT) {
+	    		payload =JsonUtil.parse(parts[parts.length-1]);
+		    	doctext = 
+		    			payload.isTextual() ? payload.asText() :
+		    			payload.has("text") ? payload.get("text").asText() :
+	    				null;
+	    	}
+	    	else if (inputFormat == InputFormat.RAW_TEXT) {
+	    		doctext = parts[parts.length-1];
+	    	}
+	    	else { throw new RuntimeException("wtf"); }
+
+	    	docid = parts.length >= 2 ? parts[0] :
+	    		payload !=null && payload.has("docid") ? payload.get("docid").getTextValue() :
+				"doc" + numDocs;
+
 			assert docid != null : "inconsistent 'docid' key";
-	    	String doctext = 
-	    			payload.isTextual() ? payload.asText() :
-	    			payload.has("text") ? payload.get("text").asText() :
-    				null;
 	    	if (doctext == null) throw new RuntimeException("Couldn't interpret JSON payload: should be string, or else object with a 'text' field.");
 	    		
 	    	Annotation document = new Annotation(doctext);
