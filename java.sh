@@ -5,4 +5,4 @@ CP="$CP:$here/bin"   ## eclipse build dir
 CP="$CP:$(echo $here/lib/*.jar | tr ' ' ':')"
 CP="$CP:$(echo $here/lib/stanford_extras/*.jar | tr ' ' ':')"
 # echo $CP
-java -Xmx6g -XX:ParallelGCThreads=1 -ea -cp "$CP" "$@"
+java -Xmx4g -XX:ParallelGCThreads=2 -ea -cp "$CP" "$@"

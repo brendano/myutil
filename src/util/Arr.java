@@ -658,6 +658,25 @@ public class Arr {
 		}
 		return ret;
 	}
+	
+	/** like python range() */
+	public static List<Integer> rangeIntList(int end) {
+		return rangeIntList(0, end, 1);
+	}
+	/** like python range() */
+	public static List<Integer> rangeIntList(int start, int end) {
+		return rangeIntList(start, end, 1);
+	}
+	/** like python range() */
+	public static List<Integer> rangeIntList(int start, int end, int step) {
+		int n = (int) Math.ceil((end-start)*1.0 / step);
+		List<Integer> ret = new ArrayList<>();
+		for (int i=0; i < n; i++) {
+			ret.add(start + step*i);
+		}
+		return ret;
+	}
+	
 	//	public static void main(String[] args) {
 	//		U.p(rangeInts(0,10,9));
 	//	}

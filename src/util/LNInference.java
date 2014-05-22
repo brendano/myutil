@@ -289,6 +289,7 @@ public class LNInference {
 //		return U.pair(sample, logprob);
 //	}
 	
+	/** sample a multivariate normal that has diagonal covariance */
 	public static double[] sampleDiagMV(double[] mean, double[] variances, FastRandom rand) {
 		int K = mean.length;
 		double[] sample = new double[K];
