@@ -72,6 +72,10 @@ public class ConvertTreeToDeps {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static JsonNode convertTreeToDepsAsJson(Tree parse) {
 		ensureInitialize();
+
+		if (parse==null) {
+			return JsonUtil.toJson(new ArrayList<>());
+		}
 		GrammaticalStructure gs = gsf.newGrammaticalStructure(parse);
 		Collection<TypedDependency> deps1;
 		deps1 = gs.typedDependenciesCCprocessed(true);
@@ -114,6 +118,8 @@ public class ConvertTreeToDeps {
 			if (line.trim().equals("")) continue;
 			String[] parts = line.split("\t");
 			
+//			System.out.println("INPUT:\t" + parts[1]);
+			
 			String headerInfo_s = parts[1];
 			JsonNode headerInfo = JsonUtil.parse(headerInfo_s);
 			if (headerInfo.has("headline"))
@@ -123,6 +129,8 @@ public class ConvertTreeToDeps {
 			
 			parts[1] = headerInfo.toString();
 			System.out.println(StringUtils.join(parts, "\t"));
+			
+//			System.out.println("OUTPUT:\t" + parts[1]);
 		}
 	}
 	
