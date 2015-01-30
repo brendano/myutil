@@ -182,7 +182,7 @@ public class Arr {
 	/** use sigdig=-1 for no constraint. */
 	public static void write(double[][] arr, String filename, int sigdig) {
 		try {
-			BufferedWriter w = BasicFileIO.openFileToWrite(filename);
+			BufferedWriter w = BasicFileIO.openFileToWriteDefaultEncoding(filename);
 			String fmt = sigdig>=0 ? "%." + sigdig + "g" : "%g";
 			for (int i=0; i < arr.length; i++) {
 				for (int j=0; j < arr[i].length; j++) {
@@ -199,7 +199,7 @@ public class Arr {
 	/** use sigdig=-1 for no constraint.  recommendation: 6 */
 	public static void write(double[] arr, String filename, int sigdig) {
 		try {
-			BufferedWriter w = BasicFileIO.openFileToWrite(filename);
+			BufferedWriter w = BasicFileIO.openFileToWriteDefaultEncoding(filename);
 			String fmt = sigdig>=0 ? "%." + sigdig + "g" : "%g";
 			for (int i=0; i < arr.length; i++) {
 				w.write(String.format(fmt, arr[i]));
@@ -213,7 +213,7 @@ public class Arr {
 
 	public static void write(int[][] arr, String filename) {
 		try {
-			BufferedWriter w = BasicFileIO.openFileToWrite(filename);
+			BufferedWriter w = BasicFileIO.openFileToWriteDefaultEncoding(filename);
 			for (int i=0; i < arr.length; i++) {
 				for (int j=0; j < arr[i].length; j++) {
 					w.write(Integer.toString(arr[i][j]));
@@ -229,7 +229,7 @@ public class Arr {
 
 	public static void write(int[] arr, String filename) {
 		try {
-			BufferedWriter w = BasicFileIO.openFileToWrite(filename);
+			BufferedWriter w = BasicFileIO.openFileToWriteDefaultEncoding(filename);
 			for (int i=0; i < arr.length; i++) {
 				w.write(Integer.toString(arr[i]));
 				w.write("\n");

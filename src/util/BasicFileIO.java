@@ -13,26 +13,44 @@ import java.util.zip.GZIPOutputStream;
 //import com.fasterxml.jackson.core.JsonParser;
 
 /**
+ * IO utilities that work with Strings, enforcing UTF-8 as default (so you don't have to depend on -Dfile.encoding)
+ * and also add some line-oriented capabilities, including python-style line iteration.
  * 
  * @author Dipanjan Das, Brendan O'Connor
- *
  */
 public class BasicFileIO {
     private static Logger log = Logger.getLogger(BasicFileIO.class.getCanonicalName());
     
     private static BufferedReader _stdin;
-    
+
     public static BufferedReader stdin() {
     	if (_stdin == null)
     		_stdin = new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8"))); 
 		return _stdin;
     }
+    
+    /** Intended for:  readFile(System.in)
+     * 
+     * Reads all data from stream and closes it.
+     */
+    public static String readFile(InputStream stream) throws IOException {
+		Scanner s = new Scanner(stream, "UTF-8");
+		String ret = s.useDelimiter("\\Z").next();
+		s.close();
+		return ret;
+    }
 	public static String readFile(String filename) throws FileNotFoundException { 
 		File file = new File(filename);
-		return new Scanner(file, "UTF-8").useDelimiter("\\Z").next();
+		Scanner s = new Scanner(file, "UTF-8");
+		String ret = s.useDelimiter("\\Z").next();
+		s.close();
+		return ret;
 	}
 	public static String readFile(File file) throws FileNotFoundException { 
-		return new Scanner(file, "UTF-8").useDelimiter("\\Z").next();
+		Scanner s = new Scanner(file, "UTF-8");
+		String ret = s.useDelimiter("\\Z").next();
+		s.close();
+		return ret;
 	}
 	public static void writeFile(String text, String filename) throws IOException {
 		Writer out = new BufferedWriter(new OutputStreamWriter(
@@ -49,22 +67,27 @@ public class BasicFileIO {
 	}
 	
 	public static void writeLines(Iterable<String> lines, String filename) throws IOException {
-		BufferedWriter out = openFileToWrite(filename);
+		BufferedWriter out = openFileToWriteDefaultEncoding(filename);
 		for (String line : lines) {
 			out.write(line);
 			out.write("\n");
 		}
 		out.close();
 	}
-	
+
+	/** Line iterator for stdin.  Usage:
+	 * 
+	 * for (String line : STDIN_LINES) { ... }
+	 */
 	public static LineIter STDIN_LINES;
 	static { STDIN_LINES = new LineIter(stdin()); }
 	
 	/** get line iterator for file, in the sprit of python "for line in open(filename)" */
 	public static LineIter openFileLines(String filename) {
-		return new LineIter(openFileToReadUTF8(filename));
+		return new LineIter(openFileToRead(filename));
 	}
 	
+	/** Line iterator (an Iterable) wrapper over a BufferedReader */
 	public static class LineIter implements Iterable<String> {
 		BufferedReader br;
 		public LineIter(BufferedReader br) {
@@ -119,7 +142,7 @@ public class BasicFileIO {
 //	}
 
 	
-    public static BufferedReader openFileToRead(String file) {
+    public static BufferedReader openFileToReadDefaultEncoding(String file) {
         try {
             BufferedReader bReader = null;
             if (file.endsWith(".gz")) {
@@ -136,7 +159,9 @@ public class BasicFileIO {
         }
         return null;
     }
-    public static BufferedReader openFileToReadUTF8(String file) {
+    
+    /** assumes UTF-8 */
+    public static BufferedReader openFileToRead(String file) {
         try {
             BufferedReader bReader = null;
             if (file.endsWith(".gz")) {
@@ -154,7 +179,7 @@ public class BasicFileIO {
         }
         return null;
     }
-    public static BufferedWriter openFileToWrite(String file) {
+    public static BufferedWriter openFileToWriteDefaultEncoding(String file) {
         try {
             BufferedWriter bWriter = null;
             if (file.endsWith(".gz")) {
@@ -171,7 +196,8 @@ public class BasicFileIO {
         }
         return null;
     }
-    public static BufferedWriter openFileToWriteUTF8(String file) {
+    /** assumes UTF-8 */
+    public static BufferedWriter openFileToWrite(String file) {
         try {
             BufferedWriter bWriter = null;
             if (file.endsWith(".gz")) {
@@ -338,7 +364,7 @@ public class BasicFileIO {
 	public static BufferedReader openFileOrResource(String fileOrResource) throws IOException {
 		try {
 			if (new File(fileOrResource).exists()) {
-				return openFileToReadUTF8(fileOrResource);
+				return openFileToRead(fileOrResource);
 			} else {
 				return getResourceReader(fileOrResource);
 			}			
