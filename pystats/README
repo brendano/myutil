@@ -1,0 +1,7 @@
+Most of these were written before the java versions.
+A few useful things:
+
+statutil.pyx has weighted_randint() for multinomial sampling
+mcmc.py has a slice sampler
+
+examples/ dir has test scripts and other usage and simulation examples
