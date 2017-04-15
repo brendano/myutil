@@ -7,6 +7,8 @@ import java.util.*;
  * a port of liblbfgs to java
  * http://www.chokkan.org/software/liblbfgs/
  *
+ * 2017-04-15: Unit test by Nichole King is available at:
+ * https://github.com/nking/curvature-scale-space-corners-and-transformations/blob/development/tests/thirdparty/brendano/LBFGS/LBFGSTest.java
  *
 	@mainpage libLBFGS: a library of Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS)
 
