@@ -1,4 +1,3 @@
-SHELL = zsh
 .SECONDARY:
 
 CC := gcc 
