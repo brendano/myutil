@@ -108,7 +108,7 @@ public class BasicFileIO {
 					try {
 						return br.readLine();
 					} catch (IOException e) {
-						U.p("reader broke, exiting");
+						System.out.println("reader broke, exiting");
 						System.exit(0);
 					}
 					return null;
@@ -137,7 +137,7 @@ public class BasicFileIO {
 	}
 //	public static void main(String args[]) {
 //		for (String line : STDIN_LINES) {
-//			U.p("LINE\t" + line);
+//			System.out.println("LINE\t" + line);
 //		}
 //	}
 
