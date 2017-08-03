@@ -78,6 +78,12 @@ public class BasicFileIO {
 	/** Line iterator for stdin.  Usage:
 	 * 
 	 * for (String line : STDIN_LINES) { ... }
+	 * 
+	 * not strictly needed in newer javas: could use instead
+		new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8"))).lines()
+		.forEach((line) -> {
+		   [...]
+		});
 	 */
 	public static LineIter STDIN_LINES;
 	static { STDIN_LINES = new LineIter(stdin()); }
@@ -87,7 +93,11 @@ public class BasicFileIO {
 		return new LineIter(openFileToRead(filename));
 	}
 	
-	/** Line iterator (an Iterable) wrapper over a BufferedReader */
+	/** Line iterator (an Iterable) wrapper over a BufferedReader.
+	 * 
+	 *  not needed in newer javas: use BR.lines() instead,
+	 *  which is also better because it doesn't have to read ahead by one line.
+	 */
 	public static class LineIter implements Iterable<String> {
 		BufferedReader br;
 		public LineIter(BufferedReader br) {
