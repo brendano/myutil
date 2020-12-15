@@ -1,0 +1,12 @@
+wait what.  Not worth it then.
+
+In [2]: timeit lda.cvb0_iter(m)
+10 loops, best of 3: 69.6 ms per loop
+
+In [3]: run -i golda
+Initial 0.176965326049
+
+In [5]: timeit lda.gibbs_iter(m)
+100 loops, best of 3: 2.38 ms per loop
+
+
